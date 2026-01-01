@@ -1422,7 +1422,6 @@ class _AnnualReportSubPage extends StatefulWidget {
   final VoidCallback onClose;
 
   const _AnnualReportSubPage({
-    super.key,
     required this.databaseService,
     required this.excludedUsernames,
     required this.onClose,
