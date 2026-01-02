@@ -30,31 +30,44 @@ class AnnualReportHtmlRenderer {
     final totalFriends = _parseNum(reportData['totalFriends']).toInt();
 
     final List<dynamic> coreFriendsJson = reportData['coreFriends'] ?? [];
-    final coreFriends = coreFriendsJson.map((e) => FriendshipRanking.fromJson(e)).toList();
+    final coreFriends = coreFriendsJson
+        .map((e) => FriendshipRanking.fromJson(e))
+        .toList();
     final topFriend = coreFriends.isNotEmpty ? coreFriends.first : null;
 
     final List<dynamic> confidantJson = reportData['confidant'] ?? [];
-    final confidants = confidantJson.map((e) => FriendshipRanking.fromJson(e)).toList();
+    final confidants = confidantJson
+        .map((e) => FriendshipRanking.fromJson(e))
+        .toList();
     final topConfidant = confidants.isNotEmpty ? confidants.first : null;
 
     final List<dynamic> listenersJson = reportData['listeners'] ?? [];
-    final listeners = listenersJson.map((e) => FriendshipRanking.fromJson(e)).toList();
+    final listeners = listenersJson
+        .map((e) => FriendshipRanking.fromJson(e))
+        .toList();
     final topListener = listeners.isNotEmpty ? listeners.first : null;
 
-    final List<dynamic> monthlyTopFriends = (reportData['monthlyTopFriends'] as List?) ?? [];
+    final List<dynamic> monthlyTopFriends =
+        (reportData['monthlyTopFriends'] as List?) ?? [];
     final selfAvatarUrl = reportData['selfAvatarUrl'] as String? ?? '';
 
     final List<dynamic> mutualFriendsJson = reportData['mutualFriends'] ?? [];
-    final mutualFriends = mutualFriendsJson.map((e) => FriendshipRanking.fromJson(e)).toList();
+    final mutualFriends = mutualFriendsJson
+        .map((e) => FriendshipRanking.fromJson(e))
+        .toList();
 
     final socialDataJson = reportData['socialInitiative'];
     final socialData = socialDataJson is Map<String, dynamic>
         ? SocialStyleData.fromJson(socialDataJson)
         : SocialStyleData(initiativeRanking: []);
-    final socialTop = socialData.initiativeRanking.isNotEmpty ? socialData.initiativeRanking.first : null;
+    final socialTop = socialData.initiativeRanking.isNotEmpty
+        ? socialData.initiativeRanking.first
+        : null;
 
     final peakDayJson = reportData['peakDay'];
-    final ChatPeakDay? peakDay = peakDayJson is Map<String, dynamic> ? ChatPeakDay.fromJson(peakDayJson) : null;
+    final ChatPeakDay? peakDay = peakDayJson is Map<String, dynamic>
+        ? ChatPeakDay.fromJson(peakDayJson)
+        : null;
 
     final checkIn = reportData['checkIn'] as Map<String, dynamic>? ?? {};
     final checkInDays = _parseNum(checkIn['days']).toInt();
@@ -63,12 +76,15 @@ class AnnualReportHtmlRenderer {
     final checkInEnd = _formatDate(checkIn['endDate'] as String?);
 
     final activityJson = reportData['activityPattern'];
-    final ActivityHeatmap? activity = activityJson is Map<String, dynamic> ? ActivityHeatmap.fromJson(activityJson) : null;
+    final ActivityHeatmap? activity = activityJson is Map<String, dynamic>
+        ? ActivityHeatmap.fromJson(activityJson)
+        : null;
     final mostActive = activity?.getMostActiveTime();
     final mostActiveHour = mostActive?['hour'];
     final mostActiveWeekday = mostActive?['weekday'];
 
-    final midnightKing = reportData['midnightKing'] as Map<String, dynamic>? ?? {};
+    final midnightKing =
+        reportData['midnightKing'] as Map<String, dynamic>? ?? {};
     final midnightName = midnightKing['displayName'] ?? '未知';
     final midnightCount = _parseNum(midnightKing['count']).toInt();
     final midnightPctVal = _parseNum(midnightKing['percentage']);
@@ -77,11 +93,13 @@ class AnnualReportHtmlRenderer {
     final whoRepliesFastest = (reportData['whoRepliesFastest'] as List?) ?? [];
     final myFastestReplies = (reportData['myFastestReplies'] as List?) ?? [];
 
-    final wordCloudData = reportData['wordCloud'] as Map<String, dynamic>? ?? {};
+    final wordCloudData =
+        reportData['wordCloud'] as Map<String, dynamic>? ?? {};
     final wordCloudWords = (wordCloudData['words'] as List?) ?? [];
 
     final formerFriends = (reportData['formerFriends'] as List?) ?? [];
-    final formerFriendsStats = reportData['formerFriendsStats'] as Map<String, dynamic>?;
+    final formerFriendsStats =
+        reportData['formerFriendsStats'] as Map<String, dynamic>?;
     final includeFormerFriends = year == null;
 
     // --- HTML 构建 ---
@@ -90,64 +108,132 @@ class AnnualReportHtmlRenderer {
     buffer.writeln('<html lang="zh-CN">');
     buffer.writeln('<head>');
     buffer.writeln('<meta charset="utf-8" />');
-    buffer.writeln('<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />');
-    buffer.writeln('<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>');
+    buffer.writeln(
+      '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />',
+    );
+    buffer.writeln(
+      '<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>',
+    );
     buffer.writeln('<style>');
     buffer.writeln(_buildCss(fonts['regular']!, fonts['bold']!));
     buffer.writeln('</style>');
     buffer.writeln('</head>');
     buffer.writeln('<body>');
-    
-    buffer.writeln('<main class="main-container" id="capture">'); 
+
+    buffer.writeln('<main class="main-container" id="capture">');
     buffer.writeln(_buildNav(reportFileName));
 
     buffer.writeln(_section('cover', 'cover', _buildCoverBody(yearText)));
 
-    buffer.writeln(_section('intro', 'intro', 
-      _buildIntroBody(numberFormat, totalFriends, totalMessages)));
+    buffer.writeln(
+      _section(
+        'intro',
+        'intro',
+        _buildIntroBody(numberFormat, totalFriends, totalMessages),
+      ),
+    );
 
-    buffer.writeln(_section('friendship', 'friendship', 
-      _buildFriendshipBody(numberFormat, topFriend, topConfidant, topListener)));
+    buffer.writeln(
+      _section(
+        'friendship',
+        'friendship',
+        _buildFriendshipBody(
+          numberFormat,
+          topFriend,
+          topConfidant,
+          topListener,
+        ),
+      ),
+    );
 
-    buffer.writeln(_section('monthly', 'monthly', 
-      _buildMonthlyBody(yearText, monthlyTopFriends, selfAvatarUrl)));
+    buffer.writeln(
+      _section(
+        'monthly',
+        'monthly',
+        _buildMonthlyBody(yearText, monthlyTopFriends, selfAvatarUrl),
+      ),
+    );
 
-    buffer.writeln(_section('mutual', 'mutual', 
-      _buildMutualBody(numberFormat, mutualFriends)));
+    buffer.writeln(
+      _section(
+        'mutual',
+        'mutual',
+        _buildMutualBody(numberFormat, mutualFriends),
+      ),
+    );
 
-    buffer.writeln(_section('initiative', 'initiative', 
-      _buildSocialBody(socialTop)));
+    buffer.writeln(
+      _section('initiative', 'initiative', _buildSocialBody(socialTop)),
+    );
 
-    buffer.writeln(_section('peak', 'peak-day', 
-      _buildPeakBody(numberFormat, peakDay)));
+    buffer.writeln(
+      _section('peak', 'peak-day', _buildPeakBody(numberFormat, peakDay)),
+    );
 
-    buffer.writeln(_section('checkin', 'checkin', 
-      _buildCheckInBody(numberFormat, checkInName, checkInDays, checkInStart, checkInEnd)));
+    buffer.writeln(
+      _section(
+        'checkin',
+        'checkin',
+        _buildCheckInBody(
+          numberFormat,
+          checkInName,
+          checkInDays,
+          checkInStart,
+          checkInEnd,
+        ),
+      ),
+    );
 
     final activityText = (mostActiveHour != null && mostActiveWeekday != null)
         ? '在 <span class="hl">${_weekdayName(mostActiveWeekday)} ${mostActiveHour.toString().padLeft(2, '0')}:00</span> 最活跃'
         : '暂无作息数据';
-    buffer.writeln(_section('activity', 'activity', 
-      _buildActivityBody(activityText, activity)));
+    buffer.writeln(
+      _section(
+        'activity',
+        'activity',
+        _buildActivityBody(activityText, activity),
+      ),
+    );
 
-    buffer.writeln(_section('midnight', 'midnight', 
-      _buildMidnightBody(numberFormat, midnightName, midnightCount, midnightPercentage)));
+    buffer.writeln(
+      _section(
+        'midnight',
+        'midnight',
+        _buildMidnightBody(
+          numberFormat,
+          midnightName,
+          midnightCount,
+          midnightPercentage,
+        ),
+      ),
+    );
 
-    buffer.writeln(_section('response', 'response', 
-      _buildResponseHtml(whoRepliesFastest, myFastestReplies)));
+    buffer.writeln(
+      _section(
+        'response',
+        'response',
+        _buildResponseHtml(whoRepliesFastest, myFastestReplies),
+      ),
+    );
 
-    buffer.writeln(_section('wordcloud', 'wordcloud', 
-      _buildWordCloudBody(wordCloudWords)));
+    buffer.writeln(
+      _section('wordcloud', 'wordcloud', _buildWordCloudBody(wordCloudWords)),
+    );
 
     if (includeFormerFriends) {
-      buffer.writeln(_section('former', 'former', 
-        _buildFormerBody(formerFriends, formerFriendsStats, numberFormat)));
+      buffer.writeln(
+        _section(
+          'former',
+          'former',
+          _buildFormerBody(formerFriends, formerFriendsStats, numberFormat),
+        ),
+      );
     }
 
     buffer.writeln(_section('ending', 'ending', _buildEndingBody()));
 
     buffer.writeln('</main>');
-    
+
     buffer.writeln('''
       <div id="modal" class="modal">
         <div class="modal-content">
@@ -171,8 +257,12 @@ class AnnualReportHtmlRenderer {
   }
 
   static Future<Map<String, String>> _loadFonts() async {
-    final regular = await rootBundle.load('assets/HarmonyOS_SansSC/HarmonyOS_SansSC_Regular.ttf');
-    final bold = await rootBundle.load('assets/HarmonyOS_SansSC/HarmonyOS_SansSC_Bold.ttf');
+    final regular = await rootBundle.load(
+      'assets/HarmonyOS_SansSC/HarmonyOS_SansSC_Regular.ttf',
+    );
+    final bold = await rootBundle.load(
+      'assets/HarmonyOS_SansSC/HarmonyOS_SansSC_Bold.ttf',
+    );
     return {
       'regular': base64Encode(regular.buffer.asUint8List()),
       'bold': base64Encode(bold.buffer.asUint8List()),
@@ -194,7 +284,7 @@ class AnnualReportHtmlRenderer {
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
-html { min-height: 100%; }
+html { min-height: 100%; scroll-behavior: smooth; }
 body {
   min-height: 100vh;
   width: 100%;
@@ -247,6 +337,7 @@ section.page.visible .content-wrapper {
   to { opacity: 1; transform: translateY(0); }
 }
 
+
 .label-text { font-size: 13px; letter-spacing: 3px; text-transform: uppercase; color: #888; margin-bottom: 16px; font-weight: 600; }
 .hero-title { font-size: clamp(36px, 5vw, 64px); font-weight: 700; line-height: 1.1; margin-bottom: 24px; }
 .hero-desc { font-size: 18px; line-height: 1.7; color: var(--text-sub); max-width: 650px; }
@@ -258,6 +349,8 @@ section.page.visible .content-wrapper {
 .gold { color: var(--accent); font-weight: 700; }
 
 .data-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 32px; margin-top: 40px; }
+.data-grid > div { transition: transform 0.25s ease, box-shadow 0.25s ease; }
+.data-grid > div:hover { transform: translateY(-4px); box-shadow: 0 12px 24px rgba(0,0,0,0.08); }
 .list-item { border-bottom: 1px solid var(--line-color); padding-bottom: 12px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: baseline; }
 .item-name { font-size: 18px; font-weight: 600; color: var(--text-main); }
 .item-val { font-size: 15px; color: var(--text-sub); }
@@ -289,6 +382,10 @@ section.page.visible .content-wrapper {
   text-align: center;
   transform: translate(-50%, -50%) rotate(calc(var(--i) * 30deg)) translateY(calc(-1 * var(--radius))) rotate(calc(var(--i) * -30deg));
   z-index: 1;
+  transition: transform 0.35s ease;
+}
+.monthly-item:hover {
+  transform: translate(-50%, -50%) rotate(calc(var(--i) * 30deg)) translateY(calc(-1 * var(--radius))) rotate(calc(var(--i) * -30deg)) scale(1.05);
 }
 .month-label { font-size: 12px; color: #999; letter-spacing: 1px; line-height: 1.1; }
 .month-name {
@@ -314,7 +411,9 @@ section.page.visible .content-wrapper {
   overflow: hidden;
   border: 2px solid #fff;
   box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
 }
+.avatar:hover { transform: translateY(-2px); box-shadow: 0 12px 24px rgba(0,0,0,0.12); }
 .avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .avatar span { font-size: 18px; color: #666; font-weight: 700; }
 .avatar.lg {
@@ -455,13 +554,10 @@ section.page.visible .content-wrapper {
   white-space: nowrap;
 }
 
-.nav-dots { position: fixed; top: 50%; right: 20px; transform: translateY(-50%); display: flex; flex-direction: column; gap: 12px; z-index: 100; }
-.dot { width: 8px; height: 8px; background: rgba(0,0,0,0.15); border-radius: 50%; cursor: pointer; transition: all 0.3s; }
-.dot.active { background: var(--primary); transform: scale(1.4); box-shadow: 0 0 10px rgba(7, 193, 96, 0.4); }
-
 .capture-btn { margin-top: 40px; padding: 14px 28px; border-radius: 99px; background: var(--primary); color: white; border: none; font-size: 16px; font-weight: 600; box-shadow: 0 4px 12px rgba(7, 193, 96, 0.3); cursor: pointer; width: 100%; max-width: 240px; transition: all 0.3s ease; }
 .capture-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(7, 193, 96, 0.4); }
 .capture-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+.capture-btn:active { transform: translateY(1px) scale(0.98); box-shadow: 0 2px 8px rgba(7, 193, 96, 0.3); }
 .capture-btn.module-btn { margin-top: 0; background: var(--accent); box-shadow: 0 4px 12px rgba(242, 170, 0, 0.3); }
 .capture-btn.module-btn:hover { box-shadow: 0 6px 16px rgba(242, 170, 0, 0.4); }
 
@@ -500,7 +596,6 @@ section.page.visible .content-wrapper {
 
 @media (max-width: 768px) {
   section.page { padding: 60px 24px; min-height: 100vh; }
-  .nav-dots { display: none; }
   .hero-title { font-size: 40px; }
   .stat-num { font-size: 60px; }
   .heatmap-header, .heatmap-week-col { font-size: 9px; }
@@ -510,6 +605,11 @@ section.page.visible .content-wrapper {
   .avatar.lg { width: 72px; height: 72px; }
   .month-name { font-size: 11px; }
   .monthly-note { font-size: 12px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; scroll-behavior: auto !important; }
+  .main-container { scroll-snap-type: none; }
 }
     ''';
   }
@@ -524,7 +624,6 @@ section.page.visible .content-wrapper {
 <div class="hero-title">$yearText<br/>微信聊天报告</div>
 <hr class="divider">
 <div class="hero-desc">${_escapeHtmlWithBreaks(AnnualReportTexts.coverPoem1)}<br/>${_escapeHtmlWithBreaks(AnnualReportTexts.coverPoem2)}</div>
-<div style="margin-top: 60px; font-size: 14px; color: #999;">↓ 滑动开启</div>
 ''';
   }
 
@@ -540,7 +639,12 @@ section.page.visible .content-wrapper {
 ''';
   }
 
-  static String _buildFriendshipBody(NumberFormat fmt, FriendshipRanking? top, FriendshipRanking? confidant, FriendshipRanking? listener) {
+  static String _buildFriendshipBody(
+    NumberFormat fmt,
+    FriendshipRanking? top,
+    FriendshipRanking? confidant,
+    FriendshipRanking? listener,
+  ) {
     if (top == null) return '<div class="hero-title">暂无数据</div>';
     final confidantSent = confidant?.count ?? 0;
     final confidantReceived = confidant?.details?['receivedCount'] as int? ?? 0;
@@ -558,7 +662,11 @@ section.page.visible .content-wrapper {
 ''';
   }
 
-  static String _buildMonthlyBody(String yearText, List<dynamic> monthlyTopFriends, String selfAvatarUrl) {
+  static String _buildMonthlyBody(
+    String yearText,
+    List<dynamic> monthlyTopFriends,
+    String selfAvatarUrl,
+  ) {
     final items = <String>[];
 
     for (var i = 0; i < 12; i++) {
@@ -571,7 +679,9 @@ section.page.visible .content-wrapper {
         }
       }
       final displayName = (data['displayName'] as String?)?.trim();
-      final name = (displayName == null || displayName.isEmpty) ? '暂无' : displayName;
+      final name = (displayName == null || displayName.isEmpty)
+          ? '暂无'
+          : displayName;
       final avatarUrl = (data['avatarUrl'] as String?) ?? '';
       final index = month - 1;
       items.add('''
@@ -598,7 +708,10 @@ section.page.visible .content-wrapper {
 ''';
   }
 
-  static String _buildMutualBody(NumberFormat fmt, List<FriendshipRanking> friends) {
+  static String _buildMutualBody(
+    NumberFormat fmt,
+    List<FriendshipRanking> friends,
+  ) {
     if (friends.isEmpty) return '<div class="hero-title">暂无数据</div>';
     final f = friends.first;
     final ratio = f.details?['ratio'] ?? '1.0';
@@ -631,7 +744,13 @@ section.page.visible .content-wrapper {
 ''';
   }
 
-static String _buildCheckInBody(NumberFormat fmt, String name, int days, String? start, String? end) {
+  static String _buildCheckInBody(
+    NumberFormat fmt,
+    String name,
+    int days,
+    String? start,
+    String? end,
+  ) {
     return '''
 <div class="label-text">持之以恒</div>
 <div class="hero-title">聊天火花</div>
@@ -665,7 +784,12 @@ $heatmap
 ''';
   }
 
-  static String _buildMidnightBody(NumberFormat fmt, String name, int count, String pct) {
+  static String _buildMidnightBody(
+    NumberFormat fmt,
+    String name,
+    int count,
+    String pct,
+  ) {
     return '''
 <div class="label-text">深夜好友</div>
 <div class="hero-title">当城市睡去</div>
@@ -677,20 +801,24 @@ $heatmap
   static String _buildResponseHtml(List fastest, List myFastest) {
     String buildList(List items, String title) {
       if (items.isEmpty) return '';
-      final rows = items.take(3).map((e) {
-        final name = _escapeHtml(e['displayName'] ?? '-');
-        final min = _parseNum(e['avgResponseTimeMinutes']).toDouble();
-        String timeStr;
-        if (min < 1.0) {
-          final seconds = (min * 60).round();
-          timeStr = '${seconds}秒';
-        } else {
-          timeStr = '${min.toStringAsFixed(0)}分钟';
-        }
-        return '<div class="list-item"><div class="item-name">$name</div><div class="item-val">$timeStr</div></div>';
-      }).join('');
+      final rows = items
+          .take(3)
+          .map((e) {
+            final name = _escapeHtml(e['displayName'] ?? '-');
+            final min = _parseNum(e['avgResponseTimeMinutes']).toDouble();
+            String timeStr;
+            if (min < 1.0) {
+              final seconds = (min * 60).round();
+              timeStr = '${seconds}秒';
+            } else {
+              timeStr = '${min.toStringAsFixed(0)}分钟';
+            }
+            return '<div class="list-item"><div class="item-name">$name</div><div class="item-val">$timeStr</div></div>';
+          })
+          .join('');
       return '<div><div class="label-text" style="margin-bottom:20px;">$title</div>$rows</div>';
     }
+
     return '''
 <div class="label-text">回应速度</div>
 <div class="hero-title">念念不忘，必有回响</div>
@@ -708,59 +836,55 @@ $heatmap
     }
 
     // 获取最大句子频率用于计算字体大小
-    final maxCount = words.isNotEmpty 
-        ? _parseNum((words.first as Map)['count']).toInt() 
+    final maxCount = words.isNotEmpty
+        ? _parseNum((words.first as Map)['count']).toInt()
         : 1;
-    
-    // 构建句子列表（显示前30个高频句子）
-    final sentenceItems = words.take(30).map((item) {
-      final sentence = _escapeHtml((item as Map)['word'] ?? '');
-      final count = _parseNum(item['count']).toInt();
-      
-      // 根据频率计算字体大小 (16px - 32px)
-      final ratio = count / maxCount;
-      final fontSize = (16 + ratio * 16).round();
-      
-      // 根据频率选择颜色
-      String color;
-      if (ratio > 0.7) {
-        color = '#07C160'; // 高频句子用主题绿色
-      } else if (ratio > 0.4) {
-        color = '#F2AA00'; // 中频句子用金色
-      } else if (ratio > 0.2) {
-        color = '#333333'; // 较低频句子用深灰
-      } else {
-        color = '#666666'; // 低频句子用浅灰
-      }
-      
-      // 如果句子太长，截断并添加省略号
-      String displaySentence = sentence;
-      if (sentence.length > 50) {
-        displaySentence = sentence.substring(0, 47) + '...';
-      }
-      
-      return '''
-<div class="sentence-item" style="font-size: ${fontSize}px; color: $color;" title="$sentence (出现 $count 次)">
-  <span class="sentence-text">$displaySentence</span>
-  <span class="sentence-count">$count</span>
-</div>''';
-    }).join('');
+
+    // 构建词云标签（显示前15个高频句子）
+    final wordItems = words
+        .take(15)
+        .map((item) {
+          final sentence = _escapeHtml((item as Map)['word'] ?? '');
+          final count = _parseNum(item['count']).toInt();
+
+          // 根据频率计算字体大小 (12px - 36px)
+          final ratio = count / maxCount;
+          final fontSize = (12 + ratio * 24).round();
+
+          // 根据频率选择颜色
+          String color;
+          if (ratio > 0.65) {
+            color = '#07C160';
+          } else if (ratio > 0.4) {
+            color = '#F2AA00';
+          } else if (ratio > 0.2) {
+            color = '#2F3437';
+          } else {
+            color = '#6B6F73';
+          }
+
+          final rotate = ((count % 5) - 2) * 2;
+
+          return '''
+<span class="word-tag" style="font-size: ${fontSize}px; color: $color; transform: rotate(${rotate}deg);" title="$sentence (出现 $count 次)">$sentence</span>''';
+        })
+        .join('');
 
     // 获取前3个高频句子展示
-    final topThree = words.take(3).map((item) {
-      final sentence = _escapeHtml((item as Map)['word'] ?? '');
-      final count = _parseNum(item['count']).toInt();
-      // 截断长句子
-      String display = sentence.length > 20 ? sentence.substring(0, 17) + '...' : sentence;
-      return '$display($count)';
-    }).join('、');
+    final topThree = words
+        .take(3)
+        .map((item) {
+          final sentence = _escapeHtml((item as Map)['word'] ?? '');
+          return sentence;
+        })
+        .join('、');
 
     return '''
 <div class="label-text">年度词云</div>
 <div class="hero-title">你的年度常用语</div>
 <div class="hero-desc" style="margin-bottom: 30px;">这一年，你说得最多的是：<br><span class="hl" style="font-size: 20px;">$topThree</span></div>
-<div class="sentence-cloud-container">$sentenceItems</div>
-<div class="hero-desc" style="margin-top: 30px; font-size: 14px; color: #999;">每个句子的大小和颜色代表它出现的频率</div>
+<div class="word-cloud-container">$wordItems</div>
+<div class="hero-desc" style="margin-top: 30px; font-size: 14px; color: #999;">句子越大、颜色越深，出现频率越高</div>
 ''';
   }
 
@@ -772,13 +896,16 @@ $heatmap
         final sessionsWithMessages = stats['sessionsWithMessages'] as int? ?? 0;
         final sessionsUnder14Days = stats['sessionsUnder14Days'] as int? ?? 0;
         if (totalSessions > 0 && sessionsWithMessages > 0) {
-           if (sessionsUnder14Days == sessionsWithMessages) {
-             message = '${AnnualReportTexts.formerFriendInsufficientData}<br/>${AnnualReportTexts.formerFriendInsufficientDataDetail}';
-           } else if (sessionsUnder14Days > 0) {
-             message = '${AnnualReportTexts.formerFriendNoQualified}<br/>有 $sessionsUnder14Days 个好友聊天记录不足14天<br/>其他好友未符合条件';
-           } else {
-             message = '${AnnualReportTexts.formerFriendNoQualified}<br/>${AnnualReportTexts.formerFriendAllGoodRelations}';
-           }
+          if (sessionsUnder14Days == sessionsWithMessages) {
+            message =
+                '${AnnualReportTexts.formerFriendInsufficientData}<br/>${AnnualReportTexts.formerFriendInsufficientDataDetail}';
+          } else if (sessionsUnder14Days > 0) {
+            message =
+                '${AnnualReportTexts.formerFriendNoQualified}<br/>有 $sessionsUnder14Days 个好友聊天记录不足14天<br/>其他好友未符合条件';
+          } else {
+            message =
+                '${AnnualReportTexts.formerFriendNoQualified}<br/>${AnnualReportTexts.formerFriendAllGoodRelations}';
+          }
         }
       }
       return '<div class="label-text">旧日足迹</div><div class="hero-title">无需追忆</div><div class="hero-desc">$message</div>';
@@ -817,14 +944,23 @@ $heatmap
     for (var w = 1; w <= 7; w++) {
       for (var h = 0; h < 24; h++) {
         final val = activity.getNormalizedValue(h, w);
-        final alpha = (val * 0.9 + 0.05).clamp(0.05, 1.0); 
-        cells.add('<div class="h-cell" style="background: rgba(7, 193, 96, $alpha)"></div>');
+        final alpha = (val * 0.9 + 0.05).clamp(0.05, 1.0);
+        cells.add(
+          '<div class="h-cell" style="background: rgba(7, 193, 96, $alpha)"></div>',
+        );
       }
     }
-    
-    final weeks = ['周一','周二','周三','周四','周五','周六','周日']
-        .map((e) => '<div class="week-label">$e</div>').join('');
-    
+
+    final weeks = [
+      '周一',
+      '周二',
+      '周三',
+      '周四',
+      '周五',
+      '周六',
+      '周日',
+    ].map((e) => '<div class="week-label">$e</div>').join('');
+
     return '''
 <div class="heatmap-wrapper">
   <div class="heatmap-header">
@@ -848,20 +984,36 @@ $heatmap
 </div>
 ''';
   }
-  
-  static String _formatDate(String? s) => s?.split('T').first ?? '-';
-  static String _weekdayName(int? w) => const {1:'周一',2:'周二',3:'周三',4:'周四',5:'周五',6:'周六',7:'周日'}[w] ?? '';
-  static String _escapeHtml(String s) => const HtmlEscape(HtmlEscapeMode.element).convert(s);
-  static String _escapeHtmlWithBreaks(String s) => _escapeHtml(s).replaceAll('\n', '<br/>');
 
-  static String _buildAvatarHtml(String? url, String name, {String sizeClass = ''}) {
+  static String _formatDate(String? s) => s?.split('T').first ?? '-';
+  static String _weekdayName(int? w) =>
+      const {
+        1: '周一',
+        2: '周二',
+        3: '周三',
+        4: '周四',
+        5: '周五',
+        6: '周六',
+        7: '周日',
+      }[w] ??
+      '';
+  static String _escapeHtml(String s) =>
+      const HtmlEscape(HtmlEscapeMode.element).convert(s);
+  static String _escapeHtmlWithBreaks(String s) =>
+      _escapeHtml(s).replaceAll('\n', '<br/>');
+
+  static String _buildAvatarHtml(
+    String? url,
+    String name, {
+    String sizeClass = '',
+  }) {
     final cls = sizeClass.isNotEmpty ? 'avatar $sizeClass' : 'avatar';
     final fallback = _escapeHtml(_initial(name));
     if (url == null || url.trim().isEmpty) {
       return '<div class="$cls"><span>$fallback</span></div>';
     }
     final safeUrl = _escapeHtml(url.trim());
-    return '<div class="$cls"><img src="$safeUrl" alt="$fallback"/></div>';
+    return '<div class="$cls"><img src="$safeUrl" alt="$fallback" loading="lazy" decoding="async"/></div>';
   }
 
   static String _initial(String name) {
@@ -873,43 +1025,43 @@ $heatmap
 
   static String _buildNav(String reportFileName) {
     return '''
-<div class="nav-dots" id="nav"></div>
 <script>
+  const moduleNames = {
+    'cover': '封面',
+    'intro': '年度概览',
+    'friendship': '年度挚友',
+    'monthly': '月度好友',
+    'mutual': '双向奔赴',
+    'initiative': '社交主动性',
+    'peak': '巅峰时刻',
+    'checkin': '聊天火花',
+    'activity': '作息规律',
+    'midnight': '深夜好友',
+    'response': '回应速度',
+    'wordcloud': '年度词云',
+    'former': '曾经的好朋友',
+    'ending': '尾声'
+  };
+
   try {
     const sections = document.querySelectorAll('section.page');
-    const nav = document.getElementById('nav');
-    
-    sections.forEach((s, i) => {
-      const dot = document.createElement('div');
-      dot.className = 'dot';
-      dot.onclick = () => s.scrollIntoView({ behavior: 'smooth' });
-      nav.appendChild(dot);
-    });
-    
-    const dots = document.querySelectorAll('.dot');
     const observer = new IntersectionObserver((entries) => {
       entries.forEach(entry => {
         if (entry.isIntersecting) {
           entry.target.classList.add('visible');
-          const id = entry.target.id;
-          const index = Array.from(sections).findIndex(s => s.id === id);
-          dots.forEach((d, i) => d.classList.toggle('active', i === index));
         }
       });
-    }, { threshold: 0.4 });
+    }, { threshold: 0.35 });
     sections.forEach(s => observer.observe(s));
-    if(dots.length > 0) dots[0].classList.add('active');
   } catch(e) { console.error(e); }
 
   function takeScreenshot() {
     const target = document.getElementById('capture');
     const btn = document.querySelector('.capture-btn');
-    const dots = document.querySelector('.nav-dots');
     const loading = document.getElementById('loading');
     
     loading.style.display = 'flex';
     if(btn) btn.style.display = 'none';
-    if(dots) dots.style.display = 'none';
 
     const originalStyle = target.style.cssText;
     target.style.height = 'auto';
@@ -918,11 +1070,15 @@ $heatmap
     
     const pages = document.querySelectorAll('section.page');
     pages.forEach(p => {
+       p.dataset.wasVisible = p.classList.contains('visible') ? '1' : '0';
+       p.classList.add('visible');
+       p.dataset.originalStyle = p.style.cssText;
        p.style.minHeight = 'auto';
        p.style.height = 'auto';
        p.style.paddingBottom = '60px';
        const wrapper = p.querySelector('.content-wrapper');
        if(wrapper) {
+         wrapper.dataset.originalStyle = wrapper.style.cssText;
          wrapper.style.opacity = '1';
          wrapper.style.transform = 'translateY(0)';
          wrapper.style.animation = 'none';
@@ -959,34 +1115,30 @@ $heatmap
     function cleanup() {
       loading.style.display = 'none';
       if(btn) btn.style.display = 'inline-block';
-      if(dots) dots.style.display = 'flex';
       target.style.cssText = originalStyle;
       pages.forEach(p => {
-         p.style.minHeight = '100vh';
-         p.style.height = '';
-         p.style.paddingBottom = '';
+         if (p.dataset.originalStyle !== undefined) {
+           p.style.cssText = p.dataset.originalStyle;
+           delete p.dataset.originalStyle;
+         } else {
+           p.style.minHeight = '100vh';
+           p.style.height = '';
+           p.style.paddingBottom = '';
+         }
+         if (p.dataset.wasVisible === '1') {
+           p.classList.add('visible');
+         } else {
+           p.classList.remove('visible');
+         }
+         delete p.dataset.wasVisible;
+         const wrapper = p.querySelector('.content-wrapper');
+         if (wrapper && wrapper.dataset.originalStyle !== undefined) {
+           wrapper.style.cssText = wrapper.dataset.originalStyle;
+           delete wrapper.dataset.originalStyle;
+         }
       });
-      location.reload();
     }
   }
-
-  // 模块名称映射
-  const moduleNames = {
-    'cover': '封面',
-    'intro': '年度概览',
-    'friendship': '年度挚友',
-    'monthly': '月度好友',
-    'mutual': '双向奔赴',
-    'initiative': '社交主动性',
-    'peak': '巅峰时刻',
-    'checkin': '聊天火花',
-    'activity': '作息规律',
-    'midnight': '深夜好友',
-    'response': '回应速度',
-    'wordcloud': '年度词云',
-    'former': '曾经的好朋友',
-    'ending': '尾声'
-  };
 
   // 显示模块选择弹窗
   function showModuleSelector() {
@@ -1052,12 +1204,10 @@ $heatmap
   async function exportSelectedModules(selectedIds) {
     const allSections = document.querySelectorAll('section.page');
     const sections = Array.from(allSections).filter(s => selectedIds.includes(s.id));
-    const dots = document.querySelector('.nav-dots');
     const allBtns = document.querySelectorAll('.capture-btn');
     
     // 禁用所有按钮
     allBtns.forEach(btn => btn.disabled = true);
-    if(dots) dots.style.display = 'none';
     
     // 创建进度提示
     const progressDiv = document.createElement('div');
@@ -1080,6 +1230,9 @@ $heatmap
       for (let i = 0; i < total; i++) {
         const section = sections[i];
         const sectionId = section.id;
+        const wasVisible = section.classList.contains('visible');
+        section.dataset.wasVisible = wasVisible ? '1' : '0';
+        section.classList.add('visible');
         const moduleIndex = selectedIds.indexOf(sectionId) + 1;
         const moduleName = moduleIndex.toString().padStart(2, '0') + '_' + (moduleNames[sectionId] || sectionId);
         
@@ -1166,6 +1319,12 @@ $heatmap
           const btnsContainer = section.querySelector('div[style*="flex-direction: column"]');
           if(btnsContainer) btnsContainer.style.display = 'flex';
         }
+        if (section.dataset.wasVisible === '1') {
+          section.classList.add('visible');
+        } else {
+          section.classList.remove('visible');
+        }
+        delete section.dataset.wasVisible;
         
         images.push({
           name: moduleName + '.png',
@@ -1202,7 +1361,6 @@ $heatmap
       alert('生成失败：' + err.message);
     } finally {
       allBtns.forEach(btn => btn.disabled = false);
-      if(dots) dots.style.display = 'flex';
     }
   }
   

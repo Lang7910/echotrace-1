@@ -57,6 +57,7 @@ class _FadeInTextState extends State<FadeInText>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _animation;
+  late Animation<Offset> _slideAnimation;
 
   @override
   void initState() {
@@ -66,6 +67,15 @@ class _FadeInTextState extends State<FadeInText>
     _animation = CurvedAnimation(
       parent: _controller,
       curve: Curves.easeOutCubic,
+    );
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0, 0.08),
+      end: Offset.zero,
+    ).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: Curves.easeOutCubic,
+      ),
     );
 
     Future.delayed(widget.delay, () {
@@ -85,12 +95,15 @@ class _FadeInTextState extends State<FadeInText>
   Widget build(BuildContext context) {
     return FadeTransition(
       opacity: _animation,
-      child: Text(
-        widget.text,
-        style: widget.style,
-        maxLines: widget.maxLines,
-        overflow: widget.overflow,
-        textAlign: widget.textAlign,
+      child: SlideTransition(
+        position: _slideAnimation,
+        child: Text(
+          widget.text,
+          style: widget.style,
+          maxLines: widget.maxLines,
+          overflow: widget.overflow,
+          textAlign: widget.textAlign,
+        ),
       ),
     );
   }
@@ -120,6 +133,7 @@ class _SlideInCardState extends State<SlideInCard>
   late AnimationController _controller;
   late Animation<Offset> _slideAnimation;
   late Animation<double> _fadeAnimation;
+  late Animation<double> _scaleAnimation;
 
   @override
   void initState() {
@@ -134,6 +148,10 @@ class _SlideInCardState extends State<SlideInCard>
         );
     _fadeAnimation = Tween<double>(
       begin: 0,
+      end: 1,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
+    _scaleAnimation = Tween<double>(
+      begin: 0.96,
       end: 1,
     ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
 
@@ -154,7 +172,10 @@ class _SlideInCardState extends State<SlideInCard>
   Widget build(BuildContext context) {
     return SlideTransition(
       position: _slideAnimation,
-      child: FadeTransition(opacity: _fadeAnimation, child: widget.child),
+      child: FadeTransition(
+        opacity: _fadeAnimation,
+        child: ScaleTransition(scale: _scaleAnimation, child: widget.child),
+      ),
     );
   }
 }

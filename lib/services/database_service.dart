@@ -2377,7 +2377,7 @@ class DatabaseService {
   /// SQL 统计会话年度消息数据（避免加载全部消息）
   Future<Map<String, int>> getSessionYearlyStats(
     String sessionId,
-    int year,
+    int? year,
   ) async {
     if (_sessionDb == null) {
       throw Exception('数据库未连接');
@@ -2385,10 +2385,12 @@ class DatabaseService {
 
     try {
       final dbInfos = await _collectTableInfosAcrossDatabases(sessionId);
-      final startTimestamp =
-          DateTime(year, 1, 1).millisecondsSinceEpoch ~/ 1000;
-      final endTimestamp =
-          DateTime(year, 12, 31, 23, 59, 59).millisecondsSinceEpoch ~/ 1000;
+      final int? startTimestamp = year == null
+          ? null
+          : DateTime(year, 1, 1).millisecondsSinceEpoch ~/ 1000;
+      final int? endTimestamp = year == null
+          ? null
+          : DateTime(year, 12, 31, 23, 59, 59).millisecondsSinceEpoch ~/ 1000;
 
       int totalMessages = 0;
       int totalWords = 0;
@@ -2468,11 +2470,15 @@ class DatabaseService {
             buffer.writeln('  0 as words');
           }
           buffer.writeln('FROM ${dbInfo.tableName}');
-          buffer.writeln('WHERE $timeColumn >= ? AND $timeColumn <= ?');
+          if (startTimestamp != null && endTimestamp != null) {
+            buffer.writeln('WHERE $timeColumn >= ? AND $timeColumn <= ?');
+          }
 
           final result = await dbInfo.database.rawQuery(
             buffer.toString(),
-            [startTimestamp, endTimestamp],
+            startTimestamp != null && endTimestamp != null
+                ? [startTimestamp, endTimestamp]
+                : null,
           );
 
           final row = result.first;
@@ -2508,7 +2514,7 @@ class DatabaseService {
   /// 获取会话年度最常用表情包（按MD5）
   Future<Map<String, dynamic>> getSessionYearlyTopEmojiMd5(
     String sessionId,
-    int year,
+    int? year,
   ) async {
     if (_sessionDb == null) {
       throw Exception('数据库未连接');
@@ -2516,10 +2522,12 @@ class DatabaseService {
 
     try {
       final dbInfos = await _collectTableInfosAcrossDatabases(sessionId);
-      final startTimestamp =
-          DateTime(year, 1, 1).millisecondsSinceEpoch ~/ 1000;
-      final endTimestamp =
-          DateTime(year, 12, 31, 23, 59, 59).millisecondsSinceEpoch ~/ 1000;
+      final int? startTimestamp = year == null
+          ? null
+          : DateTime(year, 1, 1).millisecondsSinceEpoch ~/ 1000;
+      final int? endTimestamp = year == null
+          ? null
+          : DateTime(year, 12, 31, 23, 59, 59).millisecondsSinceEpoch ~/ 1000;
 
       final myCounts = <String, int>{};
       final friendCounts = <String, int>{};
@@ -2596,15 +2604,18 @@ class DatabaseService {
             )
             ..writeln('  n.user_name AS sender_username')
             ..writeln('FROM ${dbInfo.tableName} m')
-            ..writeln('LEFT JOIN Name2Id n ON m.real_sender_id = n.rowid')
-            ..writeln(
+            ..writeln('LEFT JOIN Name2Id n ON m.real_sender_id = n.rowid');
+          final args = <Object?>[_currentAccountWxid ?? ''];
+          if (startTimestamp != null && endTimestamp != null) {
+            sql.writeln(
               'WHERE m.$timeColumn >= ? AND m.$timeColumn <= ? AND m.$typeColumn = 47',
             );
+            args.addAll([startTimestamp, endTimestamp]);
+          } else {
+            sql.writeln('WHERE m.$typeColumn = 47');
+          }
 
-          final rows = await dbInfo.database.rawQuery(
-            sql.toString(),
-            [_currentAccountWxid ?? '', startTimestamp, endTimestamp],
-          );
+          final rows = await dbInfo.database.rawQuery(sql.toString(), args);
           await logger.debug(
             'DatabaseService',
             'top emoji scan ${dbInfo.tableName}: ${rows.length} rows',

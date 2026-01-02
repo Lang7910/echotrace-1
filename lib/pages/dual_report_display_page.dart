@@ -101,35 +101,11 @@ class _DualReportDisplayPageState extends State<DualReportDisplayPage> {
               child: PageView(
                 controller: _pageController,
                 scrollDirection: Axis.vertical,
+                physics: const BouncingScrollPhysics(),
                 onPageChanged: (index) {
                   setState(() => _currentPage = index);
                 },
                 children: _pages,
-              ),
-            ),
-
-            // 页码指示器
-            Positioned(
-              right: 20,
-              top: 0,
-              bottom: 0,
-              child: Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: List.generate(_pages.length, (index) {
-                    return Container(
-                      margin: const EdgeInsets.symmetric(vertical: 4),
-                      width: 8,
-                      height: index == _currentPage ? 24 : 8,
-                      decoration: BoxDecoration(
-                        color: index == _currentPage
-                            ? const Color(0xFF07C160)
-                            : Colors.grey[300],
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                    );
-                  }),
-                ),
               ),
             ),
 
@@ -188,24 +164,6 @@ class _DualReportDisplayPageState extends State<DualReportDisplayPage> {
                 style: TextStyle(
                   fontSize: 20,
                   color: Colors.white.withValues(alpha: 0.9),
-                ),
-              ),
-              const SizedBox(height: 80),
-              FadeInText(
-                text: '滑动鼠标 / 方向键翻页',
-                delay: const Duration(milliseconds: 1200),
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.white.withValues(alpha: 0.7),
-                ),
-              ),
-              const SizedBox(height: 10),
-              FadeInText(
-                text: '← →',
-                delay: const Duration(milliseconds: 1400),
-                style: TextStyle(
-                  fontSize: 24,
-                  color: Colors.white.withValues(alpha: 0.7),
                 ),
               ),
             ],

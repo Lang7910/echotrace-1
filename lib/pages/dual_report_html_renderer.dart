@@ -20,9 +20,13 @@ class DualReportHtmlRenderer {
     buffer.writeln('<html lang="zh-CN">');
     buffer.writeln('<head>');
     buffer.writeln('<meta charset="utf-8" />');
-    buffer.writeln('<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />');
+    buffer.writeln(
+      '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />',
+    );
     buffer.writeln('<title>双人聊天报告</title>');
-    buffer.writeln('<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>');
+    buffer.writeln(
+      '<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>',
+    );
     buffer.writeln('<style>');
     buffer.writeln(_buildCss(fonts['regular']!, fonts['bold']!));
     buffer.writeln('</style>');
@@ -37,12 +41,28 @@ class DualReportHtmlRenderer {
 
     // 第二部分：第一次聊天
     final firstChat = reportData['firstChat'] as Map<String, dynamic>?;
-    final thisYearFirstChat = reportData['thisYearFirstChat'] as Map<String, dynamic>?;
-    buffer.writeln(_buildSection('first-chat', _buildFirstChatBody(firstChat, thisYearFirstChat, myName, friendName)));
+    final thisYearFirstChat =
+        reportData['thisYearFirstChat'] as Map<String, dynamic>?;
+    buffer.writeln(
+      _buildSection(
+        'first-chat',
+        _buildFirstChatBody(firstChat, thisYearFirstChat, myName, friendName),
+      ),
+    );
 
     // 第三部分：年度统计
     final yearlyStats = reportData['yearlyStats'] as Map<String, dynamic>?;
-    buffer.writeln(_buildSection('yearly-stats', _buildYearlyStatsBody(yearlyStats, myName, friendName, reportData['year'] as int? ?? DateTime.now().year)));
+    buffer.writeln(
+      _buildSection(
+        'yearly-stats',
+        _buildYearlyStatsBody(
+          yearlyStats,
+          myName,
+          friendName,
+          reportData['year'] as int?,
+        ),
+      ),
+    );
 
     buffer.writeln('</main>');
 
@@ -57,8 +77,12 @@ class DualReportHtmlRenderer {
 
   /// 加载字体文件
   static Future<Map<String, String>> _loadFonts() async {
-    final regular = await rootBundle.load('assets/HarmonyOS_SansSC/HarmonyOS_SansSC_Regular.ttf');
-    final bold = await rootBundle.load('assets/HarmonyOS_SansSC/HarmonyOS_SansSC_Bold.ttf');
+    final regular = await rootBundle.load(
+      'assets/HarmonyOS_SansSC/HarmonyOS_SansSC_Regular.ttf',
+    );
+    final bold = await rootBundle.load(
+      'assets/HarmonyOS_SansSC/HarmonyOS_SansSC_Bold.ttf',
+    );
 
     return {
       'regular': base64Encode(regular.buffer.asUint8List()),
@@ -100,6 +124,7 @@ class DualReportHtmlRenderer {
 
 html {
   min-height: 100%;
+  scroll-behavior: smooth;
 }
 
 body {
@@ -125,6 +150,7 @@ body::before {
 .main-container {
   width: 100%;
   background: var(--bg-color);
+  scroll-snap-type: y mandatory;
 }
 
 section.page {
@@ -135,6 +161,7 @@ section.page {
   justify-content: center;
   padding: 80px max(8%, 30px);
   position: relative;
+  scroll-snap-align: start;
 }
 
 .content-wrapper {
@@ -153,6 +180,7 @@ section.page.visible .content-wrapper {
   from { opacity: 0; transform: translateY(40px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
 
 .label-text {
   font-size: 13px;
@@ -205,6 +233,12 @@ section.page.visible .content-wrapper {
   margin: 24px 0;
   border: 1px solid var(--line-color);
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.05);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.info-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.08);
 }
 
 .info-row {
@@ -279,6 +313,12 @@ section.page.visible .content-wrapper {
   padding: 16px 20px;
   margin-bottom: 12px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.message-bubble:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.08);
 }
 
 .message-bubble:last-child {
@@ -315,6 +355,11 @@ section.page.visible .content-wrapper {
     font-size: 28px;
   }
 }
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; scroll-behavior: auto !important; }
+  .main-container { scroll-snap-type: none; }
+}
 ''';
   }
 
@@ -344,13 +389,18 @@ section.page.visible .content-wrapper {
 ''';
     }
 
-    final firstDate = DateTime.fromMillisecondsSinceEpoch(firstChat['createTime'] as int);
+    final firstDate = DateTime.fromMillisecondsSinceEpoch(
+      firstChat['createTime'] as int,
+    );
     final daysSince = DateTime.now().difference(firstDate).inDays;
 
     String thisYearSection = '';
     if (thisYearFirstChat != null) {
-      final initiator = thisYearFirstChat['isSentByMe'] == true ? myName : friendName;
-      final messages = thisYearFirstChat['firstThreeMessages'] as List<dynamic>?;
+      final initiator = thisYearFirstChat['isSentByMe'] == true
+          ? myName
+          : friendName;
+      final messages =
+          thisYearFirstChat['firstThreeMessages'] as List<dynamic>?;
 
       String messagesHtml = '';
       if (messages != null && messages.isNotEmpty) {
@@ -367,7 +417,8 @@ section.page.visible .content-wrapper {
         }).join();
       }
 
-      thisYearSection = '''
+      thisYearSection =
+          '''
 <div class="info-card">
   <div class="info-label">今年第一段对话</div>
   <div class="info-value">
@@ -403,11 +454,13 @@ $thisYearSection
     Map<String, dynamic>? yearlyStats,
     String myName,
     String friendName,
-    int year,
+    int? year,
   ) {
+    final yearText = year != null ? '${year}年' : '历史以来';
+    final sectionLabel = year != null ? '年度统计' : '历史统计';
     if (yearlyStats == null) {
       return '''
-<div class="label-text">年度统计</div>
+<div class="label-text">$sectionLabel</div>
 <div class="hero-title">暂无数据</div>
 ''';
     }
@@ -443,14 +496,13 @@ $thisYearSection
       }
       final safeUrl = _escapeHtml(dataUrl);
       return '''
-<img class="emoji-thumb" src="$safeUrl" alt="" />
+<img class="emoji-thumb" src="$safeUrl" alt="" loading="lazy" decoding="async" />
 ''';
     }
 
-
     return '''
-<div class="label-text">年度统计</div>
-<div class="hero-title">${_escapeHtml(myName)} & ${_escapeHtml(friendName)}的$year年</div>
+<div class="label-text">$sectionLabel</div>
+<div class="hero-title">${_escapeHtml(myName)} & ${_escapeHtml(friendName)}的$yearText</div>
 <div class="info-card">
   <div class="info-label">一共发出</div>
   <div class="info-value">
@@ -498,7 +550,6 @@ $thisYearSection
         .replaceAll("'", '&#39;');
   }
 
-
   /// 构建section
   static String _buildSection(String className, String content) {
     return '''
@@ -512,7 +563,6 @@ $thisYearSection
   static String _buildScript() {
     return '''
 <script>
-// 平滑滚动
 document.addEventListener('DOMContentLoaded', function() {
   const sections = document.querySelectorAll('section.page');
 

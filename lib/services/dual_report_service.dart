@@ -84,14 +84,17 @@ class DualReportService {
     final firstChat = await _getFirstChatInfo(friendUsername);
     await _reportProgress(onProgress, '获取首次聊天记录', '已完成', 52);
 
-    // 获取今年第一次聊天信息
-    await _reportProgress(onProgress, '获取今年首次聊天', '处理中', 60);
-    final thisYearFirstChat = await _getThisYearFirstChatInfo(
-      friendUsername,
-      friendName,
-      year ?? DateTime.now().year,
-    );
-    await _reportProgress(onProgress, '获取今年首次聊天', '已完成', 68);
+    // 获取今年第一次聊天信息（仅在选择具体年份时）
+    Map<String, dynamic>? thisYearFirstChat;
+    if (year != null) {
+      await _reportProgress(onProgress, '获取今年首次聊天', '处理中', 60);
+      thisYearFirstChat = await _getThisYearFirstChatInfo(
+        friendUsername,
+        friendName,
+        year,
+      );
+      await _reportProgress(onProgress, '获取今年首次聊天', '已完成', 68);
+    }
 
     // 获取我的微信显示名称
     await _reportProgress(onProgress, '获取我的显示名', '处理中', 75);
@@ -99,13 +102,13 @@ class DualReportService {
     await _reportProgress(onProgress, '获取我的显示名', '已完成', 80);
 
     // 获取年度统计数据
-    final actualYear = year ?? DateTime.now().year;
     await _reportProgress(onProgress, '统计年度聊天数据', '处理中', 85);
-    final yearlyStats =
-        Map<String, dynamic>.from(await _getYearlyStats(friendUsername, actualYear));
+    final yearlyStats = Map<String, dynamic>.from(
+      await _getYearlyStats(friendUsername, year),
+    );
     final topEmoji = await _databaseService.getSessionYearlyTopEmojiMd5(
       friendUsername,
-      actualYear,
+      year,
     );
     yearlyStats['myTopEmojiMd5'] = topEmoji['myTopEmojiMd5'];
     yearlyStats['friendTopEmojiMd5'] = topEmoji['friendTopEmojiMd5'];
@@ -291,7 +294,7 @@ class DualReportService {
   /// 获取年度统计数据
   Future<Map<String, dynamic>> _getYearlyStats(
     String username,
-    int year,
+    int? year,
   ) async {
     try {
       return await _databaseService.getSessionYearlyStats(username, year);

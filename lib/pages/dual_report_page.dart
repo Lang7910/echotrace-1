@@ -319,11 +319,10 @@ class _DualReportPageState extends State<DualReportPage>
           (yearlyStats['friendTopEmojiMd5'] as String?)?.isNotEmpty == true;
       if (!hasTopEmoji) {
         try {
-          final actualYear =
-              (reportData['year'] as int?) ?? DateTime.now().year;
+          final actualYear = reportData['year'] as int?;
           await logger.debug(
             'DualReportPage',
-            'top emoji missing, recompute in main isolate: friend=$friendUsername year=$actualYear',
+            'top emoji missing, recompute in main isolate: friend=$friendUsername year=${actualYear ?? "all"}',
           );
           final topEmoji =
               await appState.databaseService.getSessionYearlyTopEmojiMd5(

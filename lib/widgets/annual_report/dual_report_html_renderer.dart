@@ -42,7 +42,7 @@ class DualReportHtmlRenderer {
 
     // 第三部分：年度统计
     final yearlyStats = reportData['yearlyStats'] as Map<String, dynamic>?;
-    buffer.writeln(_buildSection('yearly-stats', _buildYearlyStatsBody(yearlyStats, myName, friendName, reportData['year'] as int? ?? DateTime.now().year)));
+    buffer.writeln(_buildSection('yearly-stats', _buildYearlyStatsBody(yearlyStats, myName, friendName, reportData['year'] as int?)));
 
     buffer.writeln('</main>');
 
@@ -100,6 +100,7 @@ class DualReportHtmlRenderer {
 
 html {
   min-height: 100%;
+  scroll-behavior: smooth;
 }
 
 body {
@@ -125,6 +126,7 @@ body::before {
 .main-container {
   width: 100%;
   background: var(--bg-color);
+  scroll-snap-type: y mandatory;
 }
 
 section.page {
@@ -135,6 +137,7 @@ section.page {
   justify-content: center;
   padding: 80px max(8%, 30px);
   position: relative;
+  scroll-snap-align: start;
 }
 
 .content-wrapper {
@@ -154,6 +157,7 @@ section.page.visible .content-wrapper {
   from { opacity: 0; transform: translateY(40px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
 
 .label-text {
   font-size: 13px;
@@ -206,6 +210,12 @@ section.page.visible .content-wrapper {
   margin: 24px 0;
   border: 1px solid var(--line-color);
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.05);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.info-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.08);
 }
 
 .info-row {
@@ -280,6 +290,12 @@ section.page.visible .content-wrapper {
   padding: 16px 20px;
   margin-bottom: 12px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.message-bubble:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.08);
 }
 
 .message-bubble:last-child {
@@ -315,6 +331,11 @@ section.page.visible .content-wrapper {
   .info-value .highlight {
     font-size: 28px;
   }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; scroll-behavior: auto !important; }
+  .main-container { scroll-snap-type: none; }
 }
 ''';
   }
@@ -408,11 +429,13 @@ $thisYearSection
     Map<String, dynamic>? yearlyStats,
     String myName,
     String friendName,
-    int year,
+    int? year,
   ) {
+    final yearText = year != null ? '${year}年' : '历史以来';
+    final sectionLabel = year != null ? '年度统计' : '历史统计';
     if (yearlyStats == null) {
       return '''
-<div class="label-text">年度统计</div>
+<div class="label-text">$sectionLabel</div>
 <div class="hero-title">暂无数据</div>
 ''';
     }
@@ -448,14 +471,14 @@ $thisYearSection
       }
       final safeUrl = _escapeHtml(dataUrl);
       return '''
-<img class="emoji-thumb" src="$safeUrl" alt="" />
+<img class="emoji-thumb" src="$safeUrl" alt="" loading="lazy" decoding="async" />
 ''';
     }
 
 
     return '''
-<div class="label-text">年度统计</div>
-<div class="hero-title">${_escapeHtml(myName)} & ${_escapeHtml(friendName)}的$year年</div>
+<div class="label-text">$sectionLabel</div>
+<div class="hero-title">${_escapeHtml(myName)} & ${_escapeHtml(friendName)}的$yearText</div>
 <div class="info-card">
   <div class="info-label">一共发出</div>
   <div class="info-value">
@@ -517,7 +540,6 @@ $thisYearSection
   static String _buildScript() {
     return '''
 <script>
-// 平滑滚动
 document.addEventListener('DOMContentLoaded', function() {
   const sections = document.querySelectorAll('section.page');
 
