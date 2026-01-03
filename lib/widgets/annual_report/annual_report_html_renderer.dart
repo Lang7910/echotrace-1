@@ -98,6 +98,16 @@ class AnnualReportHtmlRenderer {
         reportData['wordCloud'] as Map<String, dynamic>? ?? {};
     final wordCloudWords = (wordCloudData['words'] as List?) ?? [];
 
+    final messageTypesJson = (reportData['messageTypes'] as List?) ?? [];
+    final messageTypes = messageTypesJson
+        .map((e) => MessageTypeStats.fromJson(e))
+        .toList();
+    final messageLengthJson = reportData['messageLength'];
+    final MessageLengthData? messageLength =
+        messageLengthJson is Map<String, dynamic>
+            ? MessageLengthData.fromJson(messageLengthJson)
+            : null;
+
     final formerFriends = (reportData['formerFriends'] as List?) ?? [];
     final formerFriendsStats =
         reportData['formerFriendsStats'] as Map<String, dynamic>?;
@@ -193,6 +203,22 @@ class AnnualReportHtmlRenderer {
         'activity',
         'activity',
         _buildActivityBody(activityText, activity),
+      ),
+    );
+
+    buffer.writeln(
+      _section(
+        'types',
+        'message-types',
+        _buildMessageTypesBody(numberFormat, messageTypes),
+      ),
+    );
+
+    buffer.writeln(
+      _section(
+        'length',
+        'message-length',
+        _buildMessageLengthBody(numberFormat, messageLength),
       ),
     );
 
@@ -359,6 +385,13 @@ section.page.visible .content-wrapper {
 .list-item { border-bottom: 1px solid var(--line-color); padding-bottom: 12px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: baseline; }
 .item-name { font-size: 18px; font-weight: 600; color: var(--text-main); }
 .item-val { font-size: 15px; color: var(--text-sub); }
+.type-list { display: flex; flex-direction: column; gap: 18px; margin-top: 32px; }
+.type-item { background: #fff; border: 1px solid var(--line-color); border-radius: 18px; padding: 18px 20px; box-shadow: 0 10px 24px rgba(0,0,0,0.05); }
+.type-row { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; margin-bottom: 10px; }
+.type-bar { width: 100%; height: 10px; background: rgba(0,0,0,0.06); border-radius: 999px; overflow: hidden; }
+.type-bar-fill { height: 100%; background: linear-gradient(90deg, rgba(7,193,96,0.9), rgba(7,193,96,0.4)); }
+.message-sample { margin-top: 28px; padding: 18px 20px; background: #fff; border-radius: 18px; border: 1px solid var(--line-color); color: var(--text-sub); line-height: 1.7; box-shadow: 0 10px 24px rgba(0,0,0,0.05); }
+.message-sample-title { font-size: 13px; letter-spacing: 2px; text-transform: uppercase; color: #888; margin-bottom: 10px; font-weight: 600; }
 
 .monthly-orbit {
   --radius: 210px;
@@ -837,6 +870,85 @@ $heatmap
 ''';
   }
 
+  static String _buildMessageTypesBody(
+    NumberFormat fmt,
+    List<MessageTypeStats> types,
+  ) {
+    if (types.isEmpty) {
+      return '''
+<div class="label-text">消息类型</div>
+<div class="hero-title">暂无数据</div>
+''';
+    }
+
+    final items = types.take(8).map((item) {
+      final pctValue = (item.percentage * 100).clamp(0, 100);
+      final pctText = pctValue.toStringAsFixed(1);
+      return '''
+<div class="type-item">
+  <div class="type-row">
+    <div class="item-name">${_escapeHtml(item.typeName)}</div>
+    <div class="item-val">${fmt.format(item.count)} 条 · $pctText%</div>
+  </div>
+  <div class="type-bar">
+    <div class="type-bar-fill" style="width: $pctText%;"></div>
+  </div>
+</div>
+''';
+    }).join();
+
+    return '''
+<div class="label-text">消息类型</div>
+<div class="hero-title">你的聊天构成</div>
+<div class="hero-desc">每一种消息，都是你表达的一部分。</div>
+<div class="type-list">$items</div>
+''';
+  }
+
+  static String _buildMessageLengthBody(
+    NumberFormat fmt,
+    MessageLengthData? lengthData,
+  ) {
+    if (lengthData == null || lengthData.totalTextMessages == 0) {
+      return '''
+<div class="label-text">文字长度</div>
+<div class="hero-title">暂无数据</div>
+''';
+    }
+
+    final avgLength = lengthData.averageLength.toStringAsFixed(1);
+    final longestLength = lengthData.longestLength;
+    final totalText = lengthData.totalTextMessages;
+    final longestContent = lengthData.longestContent;
+
+    return '''
+<div class="label-text">文字长度</div>
+<div class="hero-title">你的表达方式</div>
+<div class="hero-desc">仅统计你发出的文本消息</div>
+<div class="data-grid">
+  <div>
+    <div class="label-text">平均每条</div>
+    <div class="item-name">$avgLength 字</div>
+    <div class="item-val">共 ${fmt.format(totalText)} 条文本</div>
+  </div>
+  <div>
+    <div class="label-text">最长一条</div>
+    <div class="item-name">${fmt.format(longestLength)} 字</div>
+    <div class="item-val">留在那段长长的文字里</div>
+  </div>
+  <div>
+    <div class="label-text">文字习惯</div>
+    <div class="item-name">慢慢说</div>
+    <div class="item-val">把想说的都写下来</div>
+  </div>
+</div>
+<div class="message-sample">
+  <div class="message-sample-title">最长一条消息</div>
+  <div>${_escapeHtml(longestContent)}</div>
+</div>
+''';
+  }
+
   static String _buildMidnightBody(
     NumberFormat fmt,
     String name,
@@ -1146,6 +1258,8 @@ $heatmap
     'peak': '巅峰时刻',
     'checkin': '聊天火花',
     'activity': '作息规律',
+    'types': '消息类型',
+    'length': '文字长度',
     'midnight': '深夜好友',
     'response': '回应速度',
     'wordcloud': '年度常用语',

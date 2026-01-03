@@ -119,6 +119,32 @@ class DualReportService {
     yearlyStats['friendEmojiRankings'] = topEmoji['friendEmojiRankings'];
     await _reportProgress(onProgress, '统计年度聊天数据', '已完成', 92);
 
+    // 获取聊天节奏与消息统计
+    final messageStats = await _getMessageStats(friendUsername, year);
+    final totalMessages = messageStats['total'] ?? 0;
+    final sentMessages = messageStats['sent'] ?? 0;
+    final receivedMessages = messageStats['received'] ?? 0;
+    final monthlyCounts =
+        await _databaseService.getSessionMessageCountsByMonth(
+          friendUsername,
+          filterYear: year,
+        );
+    final monthlyCountsList = monthlyCounts.entries
+        .map((entry) => {'month': entry.key, 'count': entry.value})
+        .toList()
+      ..sort(
+        (a, b) => (a['month'] as int).compareTo(b['month'] as int),
+      );
+    final messageDates = await _databaseService.getSessionMessageDates(
+      friendUsername,
+      filterYear: year,
+    );
+    final rhythmStats = _buildRhythmStats(
+      messageDates,
+      monthlyCounts,
+      totalMessages,
+    );
+
     // 获取词云数据
     await _reportProgress(onProgress, '生成常用语分析', '处理中', 94);
     final wordCloudData = await _getWordCloudData(friendUsername, year);
@@ -133,6 +159,11 @@ class DualReportService {
       'thisYearFirstChat': thisYearFirstChat,
       'yearlyStats': yearlyStats,
       'wordCloud': wordCloudData,
+      'totalMessages': totalMessages,
+      'sentMessages': sentMessages,
+      'receivedMessages': receivedMessages,
+      'monthlyCounts': monthlyCountsList,
+      'rhythmStats': rhythmStats,
     };
     await _reportProgress(onProgress, '整理报告数据', '已完成', 100);
     return reportData;
@@ -314,6 +345,113 @@ class DualReportService {
         'emojiCount': 0,
       };
     }
+  }
+
+  /// 获取消息数量统计（总数/发送/接收）
+  Future<Map<String, int>> _getMessageStats(
+    String username,
+    int? year,
+  ) async {
+    try {
+      final stats = await _databaseService.getSessionMessageStats(
+        username,
+        filterYear: year,
+      );
+      return {
+        'total': stats['total'] as int? ?? 0,
+        'sent': stats['sent'] as int? ?? 0,
+        'received': stats['received'] as int? ?? 0,
+      };
+    } catch (e) {
+      return {'total': 0, 'sent': 0, 'received': 0};
+    }
+  }
+
+  /// 构建聊天节奏统计
+  Map<String, dynamic> _buildRhythmStats(
+    List<DateTime> dates,
+    Map<int, int> monthlyCounts,
+    int totalMessages,
+  ) {
+    final normalizedDates =
+        dates
+            .map((d) => DateTime(d.year, d.month, d.day))
+            .toSet()
+            .toList()
+          ..sort();
+
+    final activeDays = normalizedDates.length;
+    double avgPerActiveDay = 0.0;
+    if (activeDays > 0) {
+      avgPerActiveDay = totalMessages / activeDays;
+    }
+
+    int longestStreak = 0;
+    DateTime? streakStart;
+    DateTime? streakEnd;
+    int currentStreak = 0;
+    DateTime? currentStart;
+
+    int longestGap = 0;
+    DateTime? gapStart;
+    DateTime? gapEnd;
+
+    for (var i = 0; i < normalizedDates.length; i++) {
+      final current = normalizedDates[i];
+      if (currentStart == null) {
+        currentStart = current;
+        currentStreak = 1;
+      } else {
+        final diff = current.difference(normalizedDates[i - 1]).inDays;
+        if (diff == 1) {
+          currentStreak += 1;
+        } else {
+          if (currentStreak > longestStreak) {
+            longestStreak = currentStreak;
+            streakStart = currentStart;
+            streakEnd = normalizedDates[i - 1];
+          }
+          if (diff > 1) {
+            final gapDays = diff - 1;
+            if (gapDays > longestGap) {
+              longestGap = gapDays;
+              gapStart = normalizedDates[i - 1].add(const Duration(days: 1));
+              gapEnd = current.subtract(const Duration(days: 1));
+            }
+          }
+          currentStart = current;
+          currentStreak = 1;
+        }
+      }
+    }
+
+    if (currentStreak > longestStreak) {
+      longestStreak = currentStreak;
+      streakStart = currentStart;
+      streakEnd = normalizedDates.isNotEmpty ? normalizedDates.last : null;
+    }
+
+    int? busyMonth;
+    int busyCount = 0;
+    monthlyCounts.forEach((month, count) {
+      if (count > busyCount) {
+        busyCount = count;
+        busyMonth = month;
+      }
+    });
+
+    return {
+      'activeDays': activeDays,
+      'avgPerActiveDay': avgPerActiveDay,
+      'longestStreakDays': longestStreak,
+      'streakStart': streakStart?.toIso8601String(),
+      'streakEnd': streakEnd?.toIso8601String(),
+      'longestGapDays': longestGap,
+      'gapStart': gapStart?.toIso8601String(),
+      'gapEnd': gapEnd?.toIso8601String(),
+      'busiestMonth': busyMonth,
+      'busiestMonthCount': busyCount,
+    };
   }
 
   /// 获取双人对话的高频句子（词云数据）

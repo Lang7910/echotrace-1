@@ -49,6 +49,49 @@ class DualReportHtmlRenderer {
     final yearlyStats = reportData['yearlyStats'] as Map<String, dynamic>?;
     buffer.writeln(_buildSection('yearly-stats', _buildYearlyStatsBody(yearlyStats, myName, friendName, reportData['year'] as int?)));
 
+    final totalMessages = _parseInt(
+      reportData['totalMessages'] ??
+          (yearlyStats != null ? yearlyStats['totalMessages'] : null),
+    );
+    final sentMessages = _parseInt(reportData['sentMessages']);
+    final receivedMessages = _parseInt(reportData['receivedMessages']);
+    final rhythmStats = reportData['rhythmStats'] as Map<String, dynamic>?;
+    final monthlyCounts =
+        (reportData['monthlyCounts'] as List?)
+            ?.whereType<Map>()
+            .map((e) => e.cast<String, dynamic>())
+            .toList() ??
+        [];
+
+    // 第五部分：对话占比
+    buffer.writeln(
+      _buildSection(
+        'message-balance',
+        _buildMessageBalanceBody(
+          totalMessages,
+          sentMessages,
+          receivedMessages,
+          myName,
+          friendName,
+          reportData['year'] as int?,
+        ),
+      ),
+    );
+
+    // 第六部分：聊天节奏
+    buffer.writeln(
+      _buildSection(
+        'chat-rhythm',
+        _buildRhythmBody(
+          rhythmStats,
+          monthlyCounts,
+          myName,
+          friendName,
+          reportData['year'] as int?,
+        ),
+      ),
+    );
+
     buffer.writeln('</main>');
 
     // JavaScript
@@ -69,6 +112,14 @@ class DualReportHtmlRenderer {
       'regular': base64Encode(regular.buffer.asUint8List()),
       'bold': base64Encode(bold.buffer.asUint8List()),
     };
+  }
+
+  static int _parseInt(dynamic value) {
+    if (value == null) return 0;
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    if (value is String) return int.tryParse(value) ?? 0;
+    return 0;
   }
 
   /// 构建CSS样式
@@ -258,6 +309,41 @@ section.page.visible .content-wrapper {
   font-weight: 600;
   color: var(--text-main);
   word-break: break-all;
+}
+.ratio-bar {
+  width: 100%;
+  height: 12px;
+  background: rgba(0, 0, 0, 0.08);
+  border-radius: 999px;
+  overflow: hidden;
+  margin: 18px 0 10px;
+}
+.ratio-fill {
+  height: 100%;
+  background: linear-gradient(90deg, rgba(7, 193, 96, 0.95), rgba(7, 193, 96, 0.35));
+}
+.ratio-legend {
+  font-size: 14px;
+  color: #666;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.month-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+.month-badge {
+  background: #F0F2F5;
+  color: #555;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px solid rgba(0, 0, 0, 0.06);
 }
 
 .emoji-thumb {
@@ -595,14 +681,6 @@ $thisYearSection
     final friendTopEmojiDataUrl =
         yearlyStats['friendTopEmojiDataUrl'] as String?;
 
-    // 格式化数字：千分位
-    String formatNumber(int n) {
-      return n.toString().replaceAllMapped(
-        RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-        (Match m) => '${m[1]},',
-      );
-    }
-
     String formatEmojiMd5(String? md5) {
       if (md5 == null || md5.isEmpty) return '暂无';
       return md5;
@@ -626,25 +704,25 @@ $thisYearSection
 <div class="info-card">
   <div class="info-label">一共发出</div>
   <div class="info-value">
-    <span class="highlight">${formatNumber(totalMessages)}</span> <span class="sub-highlight">条消息</span>
+    <span class="highlight">${_formatNumber(totalMessages)}</span> <span class="sub-highlight">条消息</span>
   </div>
   <div class="info-label">总计</div>
   <div class="info-value">
-    <span class="highlight">${formatNumber(totalWords)}</span> <span class="sub-highlight">字</span>
+    <span class="highlight">${_formatNumber(totalWords)}</span> <span class="sub-highlight">字</span>
   </div>
   <div class="info-label">图片</div>
   <div class="info-value">
-    <span class="highlight">${formatNumber(imageCount)}</span> <span class="sub-highlight">张</span>
+    <span class="highlight">${_formatNumber(imageCount)}</span> <span class="sub-highlight">张</span>
   </div>
   <div class="info-label">语音</div>
   <div class="info-value">
-    <span class="highlight">${formatNumber(voiceCount)}</span> <span class="sub-highlight">条</span>
+    <span class="highlight">${_formatNumber(voiceCount)}</span> <span class="sub-highlight">条</span>
   </div>
   <div class="info-row">
     <div class="info-item">
       <div class="info-label">表情包</div>
       <div class="info-value">
-        <span class="highlight">${formatNumber(emojiCount)}</span> <span class="sub-highlight">张</span>
+        <span class="highlight">${_formatNumber(emojiCount)}</span> <span class="sub-highlight">张</span>
       </div>
     </div>
     <div class="info-item">
@@ -658,6 +736,188 @@ $thisYearSection
   </div>
 </div>
 ''';
+  }
+
+  static String _buildMessageBalanceBody(
+    int totalMessages,
+    int sentMessages,
+    int receivedMessages,
+    String myName,
+    String friendName,
+    int? year,
+  ) {
+    final yearText = year != null ? '${year}年' : '历史以来';
+    final safeMyName = _escapeHtml(myName);
+    final safeFriendName = _escapeHtml(friendName);
+    final total = totalMessages > 0
+        ? totalMessages
+        : sentMessages + receivedMessages;
+
+    if (total == 0) {
+      return '''
+<div class="label-text">对话占比</div>
+<div class="hero-title">暂无数据</div>
+''';
+    }
+
+    final hasSplit = sentMessages > 0 || receivedMessages > 0;
+    final myPct = total > 0 ? (sentMessages / total * 100).clamp(0, 100) : 0.0;
+    final friendPct =
+        total > 0 ? (receivedMessages / total * 100).clamp(0, 100) : 0.0;
+    final myPctText = myPct.toStringAsFixed(1);
+    final friendPctText = friendPct.toStringAsFixed(1);
+
+    if (!hasSplit) {
+      return '''
+<div class="label-text">对话占比</div>
+<div class="hero-title">$yearText 你们的对话</div>
+<div class="info-card">
+  <div class="info-label">共交换</div>
+  <div class="info-value">
+    <span class="highlight">${_formatNumber(total)}</span> <span class="sub-highlight">条消息</span>
+  </div>
+  <div class="info-label">发送/接收占比暂不可用</div>
+</div>
+''';
+    }
+
+    return '''
+<div class="label-text">对话占比</div>
+<div class="hero-title">$yearText 你们的对话分工</div>
+<div class="info-card">
+  <div class="info-row">
+    <div class="info-item">
+      <div class="info-label">$safeMyName 发出</div>
+      <div class="info-value">
+        <span class="highlight">${_formatNumber(sentMessages)}</span> <span class="sub-highlight">条</span>
+      </div>
+    </div>
+    <div class="info-item">
+      <div class="info-label">$safeFriendName 发来</div>
+      <div class="info-value">
+        <span class="highlight">${_formatNumber(receivedMessages)}</span> <span class="sub-highlight">条</span>
+      </div>
+    </div>
+  </div>
+  <div class="ratio-bar">
+    <div class="ratio-fill" style="width: $myPctText%;"></div>
+  </div>
+  <div class="ratio-legend">$safeMyName $myPctText% · $safeFriendName $friendPctText%</div>
+</div>
+<div class="hero-desc">共 ${_formatNumber(total)} 条消息</div>
+''';
+  }
+
+  static String _buildRhythmBody(
+    Map<String, dynamic>? rhythmStats,
+    List<Map<String, dynamic>> monthlyCounts,
+    String myName,
+    String friendName,
+    int? year,
+  ) {
+    final yearText = year != null ? '${year}年' : '历史以来';
+    if (rhythmStats == null) {
+      return '''
+<div class="label-text">聊天节奏</div>
+<div class="hero-title">暂无数据</div>
+''';
+    }
+
+    final activeDays = _parseInt(rhythmStats['activeDays']);
+    if (activeDays == 0) {
+      return '''
+<div class="label-text">聊天节奏</div>
+<div class="hero-title">暂无数据</div>
+''';
+    }
+
+    final avgRaw = rhythmStats['avgPerActiveDay'];
+    final avgPerActiveDay = avgRaw is num ? avgRaw.toDouble() : 0.0;
+    final busiestMonth = _parseInt(rhythmStats['busiestMonth']);
+    final busiestMonthCount = _parseInt(rhythmStats['busiestMonthCount']);
+    final longestStreakDays = _parseInt(rhythmStats['longestStreakDays']);
+    final longestGapDays = _parseInt(rhythmStats['longestGapDays']);
+
+    final streakStart = _formatDate(rhythmStats['streakStart']?.toString());
+    final streakEnd = _formatDate(rhythmStats['streakEnd']?.toString());
+    final gapStart = _formatDate(rhythmStats['gapStart']?.toString());
+    final gapEnd = _formatDate(rhythmStats['gapEnd']?.toString());
+
+    final sortedMonths = List<Map<String, dynamic>>.from(monthlyCounts)
+      ..sort((a, b) {
+        final countA = _parseInt(a['count']);
+        final countB = _parseInt(b['count']);
+        return countB.compareTo(countA);
+      });
+
+    final topMonths = sortedMonths.take(4).map((item) {
+      final month = _parseInt(item['month']);
+      final count = _parseInt(item['count']);
+      if (month == 0 || count == 0) return '';
+      return '<span class="month-badge">$month月 · ${_formatNumber(count)}条</span>';
+    }).where((item) => item.isNotEmpty).join();
+
+    final busiestMonthText =
+        busiestMonth > 0 && busiestMonthCount > 0
+            ? '${busiestMonth}月 · ${_formatNumber(busiestMonthCount)}条'
+            : '暂无';
+
+    final streakText = longestStreakDays > 0
+        ? '${_formatNumber(longestStreakDays)} 天 ($streakStart - $streakEnd)'
+        : '暂无';
+    final gapText = longestGapDays > 0
+        ? '${_formatNumber(longestGapDays)} 天 ($gapStart - $gapEnd)'
+        : '暂无';
+
+    return '''
+<div class="label-text">聊天节奏</div>
+<div class="hero-title">$yearText 你们的节拍</div>
+<div class="info-card">
+  <div class="info-row">
+    <div class="info-item">
+      <div class="info-label">活跃天数</div>
+      <div class="info-value">
+        <span class="highlight">${_formatNumber(activeDays)}</span> <span class="sub-highlight">天</span>
+      </div>
+    </div>
+    <div class="info-item">
+      <div class="info-label">平均每个活跃日</div>
+      <div class="info-value">
+        <span class="highlight">${avgPerActiveDay.toStringAsFixed(1)}</span> <span class="sub-highlight">条</span>
+      </div>
+    </div>
+    <div class="info-item">
+      <div class="info-label">最热月份</div>
+      <div class="info-value info-value-sm">$busiestMonthText</div>
+    </div>
+  </div>
+  ${topMonths.isNotEmpty ? '<div class="month-badges">$topMonths</div>' : ''}
+</div>
+<div class="info-card">
+  <div class="info-row">
+    <div class="info-item">
+      <div class="info-label">最长连聊</div>
+      <div class="info-value info-value-sm">$streakText</div>
+    </div>
+    <div class="info-item">
+      <div class="info-label">最长空窗</div>
+      <div class="info-value info-value-sm">$gapText</div>
+    </div>
+  </div>
+</div>
+''';
+  }
+
+  static String _formatNumber(int n) {
+    return n.toString().replaceAllMapped(
+      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+      (Match m) => '${m[1]},',
+    );
+  }
+
+  static String _formatDate(String? value) {
+    if (value == null || value.isEmpty) return '-';
+    return value.split('T').first;
   }
 
   /// HTML转义

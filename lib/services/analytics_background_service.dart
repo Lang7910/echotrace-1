@@ -1053,6 +1053,59 @@ class AnalyticsBackgroundService {
               };
               break;
 
+            case 'messageTypes':
+              sendLog('开始统计消息类型分布', level: 'debug');
+              task.sendPort.send(
+                _AnalyticsMessage(
+                  type: 'progress',
+                  stage: '正在统计消息类型分布...',
+                  current: 50,
+                  total: 100,
+                  elapsedSeconds: DateTime.now()
+                      .difference(startTime)
+                      .inSeconds,
+                  estimatedRemainingSeconds: _estimateRemainingTime(
+                    50,
+                    100,
+                    startTime,
+                  ),
+                ),
+              );
+              final messageTypes = await analyticsService
+                  .analyzeMessageTypeDistribution();
+              sendLog(
+                '消息类型分布统计完成，类型数: ${messageTypes.length}',
+                level: 'debug',
+              );
+              result = messageTypes.map((e) => e.toJson()).toList();
+              break;
+
+            case 'messageLength':
+              sendLog('开始分析消息长度', level: 'debug');
+              task.sendPort.send(
+                _AnalyticsMessage(
+                  type: 'progress',
+                  stage: '正在分析消息长度...',
+                  current: 50,
+                  total: 100,
+                  elapsedSeconds: DateTime.now()
+                      .difference(startTime)
+                      .inSeconds,
+                  estimatedRemainingSeconds: _estimateRemainingTime(
+                    50,
+                    100,
+                    startTime,
+                  ),
+                ),
+              );
+              final messageLength = await analyticsService.analyzeMessageLength();
+              sendLog(
+                '消息长度分析完成，平均长度: ${messageLength.averageLength.toStringAsFixed(2)}',
+                level: 'debug',
+              );
+              result = messageLength.toJson();
+              break;
+
             default:
               sendLog('未知的分析类型: ${task.analysisType}', level: 'error');
               throw Exception('未知的分析类型: ${task.analysisType}');
@@ -1321,7 +1374,6 @@ class AnalyticsBackgroundService {
     final taskStatus = <String, String>{};
     final includeFormerFriends = filterYear == null;
 
-
     // 初始化任务状态
     final taskNames = [
       '绝对核心好友',
@@ -1333,6 +1385,8 @@ class AnalyticsBackgroundService {
       '聊天巅峰日',
       '连续打卡记录',
       '作息图谱',
+      '消息类型分布',
+      '消息长度分析',
       '深夜密友',
       '最快响应好友',
       '我回复最快',
@@ -1381,8 +1435,24 @@ class AnalyticsBackgroundService {
     final timeout = const Duration(minutes: 5);
     await logger.debug('AnnualReport', '任务超时设置: ${timeout.inMinutes} 分钟');
     final formerFriendsTimeout = Duration(minutes: timeout.inMinutes + 5);
+    final totalTasks = taskNames.length;
+    int taskIndex = 0;
 
-    await logger.info('AnnualReport', '开始任务 1/13: 绝对核心好友');
+    Future<void> logTaskStart(String taskName) async {
+      taskIndex += 1;
+      await logger.info(
+        'AnnualReport',
+        '开始任务 $taskIndex/$totalTasks: $taskName',
+      );
+    }
+
+    Future<void> logTaskDone(String taskName) async {
+      await logger.info(
+        'AnnualReport',
+        '完成任务 $taskIndex/$totalTasks: $taskName',
+      );
+    }
+    await logTaskStart('绝对核心好友');
     final coreFriendsData =
         await getAbsoluteCoreFriendsInBackground(
           filterYear,
@@ -1394,9 +1464,9 @@ class AnalyticsBackgroundService {
             throw TimeoutException('分析绝对核心好友超时，数据量可能过大');
           },
         );
-    await logger.info('AnnualReport', '完成任务 1/13: 绝对核心好友');
+    await logTaskDone('绝对核心好友');
 
-    await logger.info('AnnualReport', '开始任务 2/13: 年度倾诉对象');
+    await logTaskStart('年度倾诉对象');
     final confidant =
         await getConfidantObjectsInBackground(
           filterYear,
@@ -1408,9 +1478,9 @@ class AnalyticsBackgroundService {
             throw TimeoutException('分析年度倾诉对象超时');
           },
         );
-    await logger.info('AnnualReport', '完成任务 2/13: 年度倾诉对象');
+    await logTaskDone('年度倾诉对象');
 
-    await logger.info('AnnualReport', '开始任务 3/13: 年度最佳听众');
+    await logTaskStart('年度最佳听众');
     final listeners =
         await getBestListenersInBackground(
           filterYear,
@@ -1422,9 +1492,9 @@ class AnalyticsBackgroundService {
             throw TimeoutException('分析年度最佳听众超时');
           },
         );
-    await logger.info('AnnualReport', '完成任务 3/13: 年度最佳听众');
+    await logTaskDone('年度最佳听众');
 
-    await logger.info('AnnualReport', '开始任务 4/13: 月度好友');
+    await logTaskStart('月度好友');
     final monthlyTopFriendsData =
         await getMonthlyTopFriendsInBackground(
           filterYear,
@@ -1436,9 +1506,9 @@ class AnalyticsBackgroundService {
             throw TimeoutException('分析月度好友超时');
           },
         );
-    await logger.info('AnnualReport', '完成任务 4/13: 月度好友');
+    await logTaskDone('月度好友');
 
-    await logger.info('AnnualReport', '开始任务 5/13: 双向奔赴好友');
+    await logTaskStart('双向奔赴好友');
     final mutualFriends =
         await getMutualFriendsRankingInBackground(
           filterYear,
@@ -1450,9 +1520,9 @@ class AnalyticsBackgroundService {
             throw TimeoutException('分析双向奔赴好友超时');
           },
         );
-    await logger.info('AnnualReport', '完成任务 5/13: 双向奔赴好友');
+    await logTaskDone('双向奔赴好友');
 
-    await logger.info('AnnualReport', '开始任务 6/13: 主动社交指数');
+    await logTaskStart('主动社交指数');
     final socialInitiative =
         await analyzeSocialInitiativeRateInBackground(
           filterYear,
@@ -1464,9 +1534,9 @@ class AnalyticsBackgroundService {
             throw TimeoutException('分析主动社交指数超时');
           },
         );
-    await logger.info('AnnualReport', '完成任务 6/13: 主动社交指数');
+    await logTaskDone('主动社交指数');
 
-    await logger.info('AnnualReport', '开始任务 7/13: 聊天巅峰日');
+    await logTaskStart('聊天巅峰日');
     final peakDay =
         await analyzePeakChatDayInBackground(
           filterYear,
@@ -1478,9 +1548,9 @@ class AnalyticsBackgroundService {
             throw TimeoutException('分析聊天巅峰日超时');
           },
         );
-    await logger.info('AnnualReport', '完成任务 7/13: 聊天巅峰日');
+    await logTaskDone('聊天巅峰日');
 
-    await logger.info('AnnualReport', '开始任务 8/13: 连续打卡记录');
+    await logTaskStart('连续打卡记录');
     final checkIn =
         await findLongestCheckInRecordInBackground(
           filterYear,
@@ -1492,9 +1562,9 @@ class AnalyticsBackgroundService {
             throw TimeoutException('分析连续打卡记录超时');
           },
         );
-    await logger.info('AnnualReport', '完成任务 8/13: 连续打卡记录');
+    await logTaskDone('连续打卡记录');
 
-    await logger.info('AnnualReport', '开始任务 9/13: 作息图谱');
+    await logTaskStart('作息图谱');
     final activityPattern =
         await analyzeActivityPatternInBackground(
           filterYear,
@@ -1506,9 +1576,37 @@ class AnalyticsBackgroundService {
             throw TimeoutException('分析作息图谱超时');
           },
         );
-    await logger.info('AnnualReport', '完成任务 9/13: 作息图谱');
+    await logTaskDone('作息图谱');
 
-    await logger.info('AnnualReport', '开始任务 10/13: 深夜密友');
+    await logTaskStart('消息类型分布');
+    final messageTypes =
+        await analyzeMessageTypeDistributionInBackground(
+          filterYear,
+          createProgressCallback('消息类型分布'),
+        ).timeout(
+          timeout,
+          onTimeout: () {
+            logger.error('AnnualReport', '任务超时: 消息类型分布');
+            throw TimeoutException('分析消息类型分布超时');
+          },
+        );
+    await logTaskDone('消息类型分布');
+
+    await logTaskStart('消息长度分析');
+    final messageLength =
+        await analyzeMessageLengthInBackground(
+          filterYear,
+          createProgressCallback('消息长度分析'),
+        ).timeout(
+          timeout,
+          onTimeout: () {
+            logger.error('AnnualReport', '任务超时: 消息长度分析');
+            throw TimeoutException('分析消息长度超时');
+          },
+        );
+    await logTaskDone('消息长度分析');
+
+    await logTaskStart('深夜密友');
     final midnightKing =
         await findMidnightChatKingInBackground(
           filterYear,
@@ -1520,9 +1618,9 @@ class AnalyticsBackgroundService {
             throw TimeoutException('分析深夜密友超时');
           },
         );
-    await logger.info('AnnualReport', '完成任务 10/13: 深夜密友');
+    await logTaskDone('深夜密友');
 
-    await logger.info('AnnualReport', '开始任务 11/13: 最快响应好友');
+    await logTaskStart('最快响应好友');
     final whoRepliesFastest =
         await analyzeWhoRepliesFastestInBackground(
           filterYear,
@@ -1534,9 +1632,9 @@ class AnalyticsBackgroundService {
             throw TimeoutException('分析最快响应好友超时，可能因为好友数量过多');
           },
         );
-    await logger.info('AnnualReport', '完成任务 11/13: 最快响应好友');
+    await logTaskDone('最快响应好友');
 
-    await logger.info('AnnualReport', '开始任务 12/13: 我回复最快');
+    await logTaskStart('我回复最快');
     final myFastestReplies =
         await analyzeMyFastestRepliesInBackground(
           filterYear,
@@ -1548,13 +1646,13 @@ class AnalyticsBackgroundService {
             throw TimeoutException('分析我回复最快超时，可能因为好友数量过多');
           },
         );
-    await logger.info('AnnualReport', '完成任务 12/13: 我回复最快');
+    await logTaskDone('我回复最快');
 
     List<Map<String, dynamic>> formerFriends = [];
     Map<String, dynamic>? formerFriendsStats;
 
     if (includeFormerFriends) {
-      await logger.info('AnnualReport', '开始任务 13/13: 曾经的好朋友');
+      await logTaskStart('曾经的好朋友');
       final formerFriendsData =
           await analyzeFormerFriendsInBackground(
             filterYear,
@@ -1575,7 +1673,7 @@ class AnalyticsBackgroundService {
               };
             },
           );
-      await logger.info('AnnualReport', '完成任务 13/13: 曾经的好朋友');
+      await logTaskDone('曾经的好朋友');
 
       formerFriends =
           formerFriendsData['results'] as List<Map<String, dynamic>>;
@@ -1604,6 +1702,11 @@ class AnalyticsBackgroundService {
       '月度好友数: ${(monthlyTopFriendsData['monthlyTopFriends'] as List).length}',
     );
     await logger.debug('AnnualReport', '双向奔赴好友数: ${mutualFriends.length}');
+    await logger.debug('AnnualReport', '消息类型数: ${messageTypes.length}');
+    await logger.debug(
+      'AnnualReport',
+      '消息长度均值: ${messageLength.averageLength.toStringAsFixed(2)}',
+    );
     await logger.debug('AnnualReport', '最快响应好友数: ${whoRepliesFastest.length}');
     await logger.debug('AnnualReport', '我回复最快好友数: ${myFastestReplies.length}');
 
@@ -1671,6 +1774,8 @@ class AnalyticsBackgroundService {
       'peakDay': peakDay.toJson(),
       'checkIn': checkIn,
       'activityPattern': activityPattern.toJson(),
+      'messageTypes': messageTypes.map((e) => e.toJson()).toList(),
+      'messageLength': messageLength.toJson(),
       'midnightKing': midnightKing,
       'whoRepliesFastest': whoRepliesFastest,
       'myFastestReplies': myFastestReplies,
