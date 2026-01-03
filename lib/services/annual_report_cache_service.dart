@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 /// 年度报告缓存服务
 class AnnualReportCacheService {
+  static const int reportVersion = 3;
   static const String _keyPrefix = 'annual_report_';
   static const String _allKey = 'annual_report_all';
   static const String _cachedYearsKey = 'cached_report_years';

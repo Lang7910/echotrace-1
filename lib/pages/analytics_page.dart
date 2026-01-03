@@ -1991,11 +1991,19 @@ class _DualReportSubPageState extends State<_DualReportSubPage>
         'cache check: friend=${ranking.username} hit=${cached != null}',
       );
       Map<String, dynamic> reportData;
-      if (cached != null) {
+      final cachedVersion = cached?['reportVersion'] as int?;
+      if (cached != null &&
+          cachedVersion == DualReportCacheService.reportVersion) {
         await _updateProgress('检查缓存', '已完成', 100);
         reportData = cached;
         await logger.info('DualReportPage', 'cache hit: use cached report');
       } else {
+        if (cached != null) {
+          await logger.info(
+            'DualReportPage',
+            'cache version mismatch, regenerate: cached=$cachedVersion current=${DualReportCacheService.reportVersion}',
+          );
+        }
         await _updateProgress('检查缓存', '已完成', 12);
         reportData = await _generateReportInIsolate(ranking);
         final cacheData = _cloneForCache(reportData);

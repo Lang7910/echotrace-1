@@ -5860,18 +5860,39 @@ class DatabaseService {
       int longestLength = 0;
       Map<String, dynamic>? longestMessage;
 
-      // 构建年份过滤条件
-      String whereClause =
-          'WHERE real_sender_id = (SELECT rowid FROM Name2Id WHERE user_name = ?) AND local_type IN (1, 244813135921)';
+      const contentCandidates = [
+        'display_content',
+        'message_content',
+        'content',
+        'WCDB_CT_message_content',
+      ];
+
+      String yearFilter = '';
       if (year != null) {
         final startTime = DateTime(year, 1, 1).millisecondsSinceEpoch ~/ 1000;
         final endTime = DateTime(year + 1, 1, 1).millisecondsSinceEpoch ~/ 1000;
-        whereClause +=
+        yearFilter =
             ' AND create_time >= $startTime AND create_time < $endTime';
       }
 
       for (final cachedDb in cachedDbs) {
         try {
+          int? myRowId;
+          if ((_currentAccountWxid ?? '').isNotEmpty) {
+            try {
+              final rowIdResult = await cachedDb.database.rawQuery(
+                'SELECT rowid FROM Name2Id WHERE user_name = ?',
+                [_currentAccountWxid ?? ''],
+              );
+              if (rowIdResult.isNotEmpty) {
+                myRowId = rowIdResult.first['rowid'] as int?;
+              }
+            } catch (_) {}
+          }
+
+          final senderFilter =
+              myRowId != null ? ' AND real_sender_id = $myRowId' : '';
+
           final tables = await cachedDb.database.rawQuery(
             "SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'Msg_%'",
           );
@@ -5880,19 +5901,40 @@ class DatabaseService {
             final tableName = tableRow['name'] as String;
             if (excludedTables.contains(tableName)) continue;
 
+            String? contentColumn;
+            try {
+              final pragmaRows = await cachedDb.database.rawQuery(
+                "PRAGMA table_info('$tableName')",
+              );
+              final cols = pragmaRows
+                  .map(
+                    (row) =>
+                        (row['name'] as String?)?.toLowerCase() ?? '',
+                  )
+                  .toSet();
+              for (final candidate in contentCandidates) {
+                if (cols.contains(candidate.toLowerCase())) {
+                  contentColumn = candidate;
+                  break;
+                }
+              }
+            } catch (_) {}
+            if (contentColumn == null) continue;
+
             // 统计总长度和数量
             final statsResult = await cachedDb.database.rawQuery(
               '''
               SELECT 
-                SUM(LENGTH(display_content)) as total_length,
+                SUM(LENGTH($contentColumn)) as total_length,
                 COUNT(*) as count
               FROM $tableName
-              $whereClause
-              AND display_content IS NOT NULL 
-              AND display_content != ''
-              AND display_content NOT LIKE '[%'
+              WHERE local_type IN (1, 244813135921)
+              $senderFilter
+              $yearFilter
+              AND $contentColumn IS NOT NULL 
+              AND $contentColumn != ''
+              AND $contentColumn NOT LIKE '[%'
             ''',
-              [_currentAccountWxid ?? ''],
             );
 
             if (statsResult.isNotEmpty && statsResult[0]['count'] != null) {
@@ -5907,18 +5949,19 @@ class DatabaseService {
             final longestResult = await cachedDb.database.rawQuery(
               '''
               SELECT 
-                display_content,
-                LENGTH(display_content) as len,
+                $contentColumn as content,
+                LENGTH($contentColumn) as len,
                 create_time
               FROM $tableName
-              $whereClause
-              AND display_content IS NOT NULL 
-              AND display_content != ''
-              AND display_content NOT LIKE '[%'
+              WHERE local_type IN (1, 244813135921)
+              $senderFilter
+              $yearFilter
+              AND $contentColumn IS NOT NULL 
+              AND $contentColumn != ''
+              AND $contentColumn NOT LIKE '[%'
               ORDER BY len DESC
               LIMIT 1
             ''',
-              [_currentAccountWxid ?? ''],
             );
 
             if (longestResult.isNotEmpty) {
@@ -5926,7 +5969,7 @@ class DatabaseService {
               if (len > longestLength) {
                 longestLength = len;
                 longestMessage = {
-                  'content': longestResult[0]['display_content'] as String,
+                  'content': longestResult[0]['content'] as String? ?? '',
                   'length': len,
                   'createTime': longestResult[0]['create_time'] as int,
                   'tableName': tableName,

@@ -113,6 +113,15 @@ class _AnnualReportDisplayPageState extends State<AnnualReportDisplayPage> {
       final cachedData = await AnnualReportCacheService.loadReport(widget.year);
       if (cachedData != null) {
         await logger.info('AnnualReportPage', '找到缓存数据，检查时间戳');
+        final cachedVersion = cachedData['reportVersion'] as int?;
+        if (cachedVersion != AnnualReportCacheService.reportVersion) {
+          await logger.info(
+            'AnnualReportPage',
+            '缓存版本不匹配，重新生成: cached=$cachedVersion current=${AnnualReportCacheService.reportVersion}',
+          );
+          await _requestGenerateReport();
+          return;
+        }
         final cachedExcluded =
             (cachedData['excludedUsernames'] as List?)
                 ?.map((e) => e.toString())
@@ -263,6 +272,7 @@ class _AnnualReportDisplayPageState extends State<AnnualReportDisplayPage> {
       data['dbModifiedTime'] = _dbModifiedTime;
       data['excludedUsernames'] =
           _normalizedExcludedUsernames.toList()..sort();
+      data['reportVersion'] = AnnualReportCacheService.reportVersion;
       await logger.debug('AnnualReportPage', '保存数据库修改时间: $_dbModifiedTime');
 
       // 保存到缓存

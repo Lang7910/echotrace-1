@@ -1,6 +1,7 @@
 import 'dart:isolate';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'database_service.dart';
+import 'dual_report_cache_service.dart';
 import 'word_cloud_service.dart';
 import '../models/contact_record.dart';
 import '../models/contact.dart';
@@ -155,6 +156,7 @@ class DualReportService {
       'friendUsername': friendUsername,
       'friendName': friendName,
       'year': year,
+      'reportVersion': DualReportCacheService.reportVersion,
       'firstChat': firstChat,
       'thisYearFirstChat': thisYearFirstChat,
       'yearlyStats': yearlyStats,
@@ -491,13 +493,36 @@ class DualReportService {
           .map((msg) => msg.displayContent)
           .toList();
 
-      // 使用统一的词云服务分析
-      final result = await WordCloudService.instance.analyze(
-        texts: WordCloudService.filterTextMessages(textContents),
+      final filteredTexts = WordCloudService.filterTextMessages(textContents);
+      if (filteredTexts.isEmpty) {
+        return {'words': [], 'totalWords': 0, 'totalMessages': 0};
+      }
+
+      // 使用统一的词云服务分析（优先句子模式）
+      var result = await WordCloudService.instance.analyze(
+        texts: filteredTexts,
         mode: WordCloudMode.sentence,
         topN: 50,
         minCount: 2,
       );
+
+      if (result.words.isEmpty) {
+        result = await WordCloudService.instance.analyze(
+          texts: filteredTexts,
+          mode: WordCloudMode.sentence,
+          topN: 50,
+          minCount: 1,
+        );
+      }
+
+      if (result.words.isEmpty) {
+        result = await WordCloudService.instance.analyze(
+          texts: filteredTexts,
+          mode: WordCloudMode.word,
+          topN: 50,
+          minCount: 1,
+        );
+      }
 
       return result.toJson();
     } catch (e) {

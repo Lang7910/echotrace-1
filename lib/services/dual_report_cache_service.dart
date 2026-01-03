@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 /// 双人报告缓存服务
 class DualReportCacheService {
+  static const int reportVersion = 3;
   static const String _keyPrefix = 'dual_report_';
 
   /// 生成缓存键

@@ -42,7 +42,9 @@ class DualReportHtmlRenderer {
     buffer.writeln(_buildSection('first-chat', _buildFirstChatBody(firstChat, thisYearFirstChat, myName, friendName)));
 
     // 第三部分：常用语（词云）
-    final wordCloudData = reportData['wordCloud'] as Map<String, dynamic>?;
+    final wordCloudRaw = reportData['wordCloud'];
+    final wordCloudData =
+        wordCloudRaw is Map ? wordCloudRaw.cast<String, dynamic>() : null;
     buffer.writeln(_buildSection('word-cloud', _buildWordCloudBody(wordCloudData, myName, friendName, reportData['year'] as int?)));
 
     // 第四部分：年度统计
@@ -55,7 +57,9 @@ class DualReportHtmlRenderer {
     );
     final sentMessages = _parseInt(reportData['sentMessages']);
     final receivedMessages = _parseInt(reportData['receivedMessages']);
-    final rhythmStats = reportData['rhythmStats'] as Map<String, dynamic>?;
+    final rhythmRaw = reportData['rhythmStats'];
+    final rhythmStats =
+        rhythmRaw is Map ? rhythmRaw.cast<String, dynamic>() : null;
     final monthlyCounts =
         (reportData['monthlyCounts'] as List?)
             ?.whereType<Map>()
@@ -92,10 +96,14 @@ class DualReportHtmlRenderer {
       ),
     );
 
+    buffer.writeln(
+      _buildSection('ending', _buildEndingBody(myName, friendName)),
+    );
+
     buffer.writeln('</main>');
 
     // JavaScript
-    buffer.writeln(_buildScript());
+    buffer.writeln(_buildScript(friendName));
 
     buffer.writeln('</body>');
     buffer.writeln('</html>');
@@ -345,6 +353,76 @@ section.page.visible .content-wrapper {
   font-weight: 600;
   border: 1px solid rgba(0, 0, 0, 0.06);
 }
+.export-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 28px;
+  max-width: 320px;
+}
+.capture-btn {
+  padding: 14px 28px;
+  border-radius: 99px;
+  background: var(--primary);
+  color: white;
+  border: none;
+  font-size: 16px;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(7, 193, 96, 0.3);
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+.capture-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(7, 193, 96, 0.4);
+}
+.capture-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+.capture-btn:active {
+  transform: translateY(1px) scale(0.98);
+  box-shadow: 0 2px 8px rgba(7, 193, 96, 0.3);
+}
+.capture-btn.module-btn {
+  background: var(--accent);
+  box-shadow: 0 4px 12px rgba(242, 170, 0, 0.3);
+}
+.capture-btn.module-btn:hover {
+  box-shadow: 0 6px 16px rgba(242, 170, 0, 0.4);
+}
+.module-progress {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: white;
+  padding: 32px 48px;
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+  z-index: 10001;
+  text-align: center;
+  min-width: 280px;
+}
+.module-progress h3 { margin: 0 0 16px; font-size: 18px; color: var(--text-main); }
+.module-progress .progress-bar { height: 8px; background: #eee; border-radius: 4px; overflow: hidden; margin-bottom: 12px; }
+.module-progress .progress-fill { height: 100%; background: var(--primary); transition: width 0.3s ease; }
+.module-progress .progress-text { font-size: 14px; color: var(--text-sub); }
+.module-selector-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 10001; display: flex; justify-content: center; align-items: center; }
+.module-selector-content { background: white; padding: 28px 32px; border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); max-width: 400px; width: 90%; max-height: 80vh; display: flex; flex-direction: column; }
+.module-selector-content h3 { margin: 0 0 20px; font-size: 20px; color: var(--text-main); text-align: center; }
+.module-list { display: flex; flex-direction: column; gap: 8px; max-height: 400px; overflow-y: auto; padding-right: 8px; margin-bottom: 20px; }
+.module-item { display: flex; align-items: center; gap: 12px; padding: 10px 14px; background: #f8f8f8; border-radius: 8px; cursor: pointer; transition: all 0.2s; }
+.module-item:hover { background: #f0f0f0; }
+.module-item input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--primary); cursor: pointer; }
+.module-item span { font-size: 14px; color: var(--text-main); }
+.module-selector-actions { display: flex; gap: 10px; justify-content: center; }
+.module-selector-buttons { display: flex; gap: 12px; justify-content: center; }
+.module-selector-buttons .cancel-btn { padding: 12px 28px; border: 1px solid #ddd; background: white; border-radius: 99px; font-size: 15px; color: #666; cursor: pointer; transition: all 0.2s; }
+.module-selector-buttons .cancel-btn:hover { background: #f5f5f5; }
+.module-selector-buttons .confirm-btn { padding: 12px 28px; border: none; background: var(--primary); border-radius: 99px; font-size: 15px; color: white; font-weight: 600; cursor: pointer; box-shadow: 0 4px 12px rgba(7, 193, 96, 0.3); transition: all 0.2s; }
+.module-selector-buttons .confirm-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(7, 193, 96, 0.4); }
 
 .emoji-thumb {
   width: 72px;
@@ -824,13 +902,6 @@ $thisYearSection
     }
 
     final activeDays = _parseInt(rhythmStats['activeDays']);
-    if (activeDays == 0) {
-      return '''
-<div class="label-text">聊天节奏</div>
-<div class="hero-title">暂无数据</div>
-''';
-    }
-
     final avgRaw = rhythmStats['avgPerActiveDay'];
     final avgPerActiveDay = avgRaw is num ? avgRaw.toDouble() : 0.0;
     final busiestMonth = _parseInt(rhythmStats['busiestMonth']);
@@ -849,6 +920,18 @@ $thisYearSection
         final countB = _parseInt(b['count']);
         return countB.compareTo(countA);
       });
+
+    final hasMonthlyData = monthlyCounts.any(
+      (item) => _parseInt(item['count']) > 0,
+    );
+    final hasAnyData =
+        activeDays > 0 || busiestMonthCount > 0 || hasMonthlyData;
+    if (!hasAnyData) {
+      return '''
+<div class="label-text">聊天节奏</div>
+<div class="hero-title">暂无数据</div>
+''';
+    }
 
     final topMonths = sortedMonths.take(4).map((item) {
       final month = _parseInt(item['month']);
@@ -904,6 +987,20 @@ $thisYearSection
       <div class="info-value info-value-sm">$gapText</div>
     </div>
   </div>
+</div>
+''';
+  }
+
+  static String _buildEndingBody(String myName, String friendName) {
+    final safeMyName = _escapeHtml(myName);
+    final safeFriendName = _escapeHtml(friendName);
+    return '''
+<div class="label-text">保存记录</div>
+<div class="hero-title">把这段故事收好</div>
+<div class="hero-desc">$safeMyName 与 $safeFriendName 的对话，值得被珍藏。</div>
+<div class="export-actions">
+  <button class="capture-btn" onclick="takeScreenshot()">生成双人长图报告</button>
+  <button class="capture-btn module-btn" onclick="takeModuleScreenshots()">分模块导出图片</button>
 </div>
 ''';
   }
@@ -1080,9 +1177,20 @@ $thisYearSection
   }
 
   /// 构建JavaScript
-  static String _buildScript() {
+  static String _buildScript(String friendName) {
+    final friendJson = jsonEncode(friendName);
     return '''
 <script>
+const moduleNames = {
+  'cover': '封面',
+  'first-chat': '第一次聊天',
+  'word-cloud': '常用语',
+  'yearly-stats': '年度统计',
+  'message-balance': '对话占比',
+  'chat-rhythm': '聊天节奏',
+  'ending': '保存记录'
+};
+
 document.addEventListener('DOMContentLoaded', function() {
   const sections = document.querySelectorAll('section.page');
 
@@ -1096,6 +1204,448 @@ document.addEventListener('DOMContentLoaded', function() {
 
   sections.forEach((section) => observer.observe(section));
 });
+
+function sanitizeName(name) {
+  return name.replace(/[\\\\/:*?"<>|]/g, '_').replace(/\\s+/g, '_');
+}
+
+function buildExportFolderName(prefix) {
+  const stamp = new Date().toISOString().replace(/[-:]/g, '').replace('T', '_').slice(0, 15);
+  return sanitizeName(prefix + '_' + stamp);
+}
+
+async function pickExportDirectory(prefix) {
+  if (!window.showDirectoryPicker) {
+    return { dirHandle: null, canceled: false };
+  }
+  try {
+    const rootHandle = await window.showDirectoryPicker();
+    const folderName = buildExportFolderName(prefix);
+    const dirHandle = await rootHandle.getDirectoryHandle(folderName, { create: true });
+    return { dirHandle, canceled: false };
+  } catch (err) {
+    if (err && err.name === 'AbortError') {
+      return { dirHandle: null, canceled: true };
+    }
+    throw err;
+  }
+}
+
+async function saveDataUrlToDirectory(dirHandle, fileName, dataUrl) {
+  const response = await fetch(dataUrl);
+  const blob = await response.blob();
+  const fileHandle = await dirHandle.getFileHandle(fileName, { create: true });
+  const writable = await fileHandle.createWritable();
+  await writable.write(blob);
+  await writable.close();
+}
+
+function hideCaptureButtons() {
+  const buttons = Array.from(document.querySelectorAll('.capture-btn'));
+  return buttons.map(btn => {
+    const prev = btn.style.display;
+    btn.style.display = 'none';
+    return { btn, prev };
+  });
+}
+
+function restoreCaptureButtons(state) {
+  state.forEach(item => {
+    item.btn.style.display = item.prev;
+  });
+}
+
+async function takeScreenshot() {
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  const rawFriend = $friendJson || 'dual';
+  const prefix = sanitizeName('dual_report_' + rawFriend);
+  const fileName = prefix + '.png';
+  let dirInfo = { dirHandle: null, canceled: false };
+  if (!isMobile) {
+    dirInfo = await pickExportDirectory(prefix);
+    if (dirInfo.canceled) {
+      return;
+    }
+  }
+
+  const target = document.getElementById('capture');
+  const hiddenButtons = hideCaptureButtons();
+  const originalStyle = target.style.cssText;
+  target.style.height = 'auto';
+  target.style.overflow = 'visible';
+  target.style.scrollSnapType = 'none';
+
+  const pages = document.querySelectorAll('section.page');
+  pages.forEach(p => {
+     p.dataset.wasVisible = p.classList.contains('visible') ? '1' : '0';
+     p.classList.add('visible');
+     p.dataset.originalStyle = p.style.cssText;
+     p.style.minHeight = 'auto';
+     p.style.height = 'auto';
+     p.style.paddingBottom = '60px';
+     const wrapper = p.querySelector('.content-wrapper');
+     if(wrapper) {
+       wrapper.dataset.originalStyle = wrapper.style.cssText;
+       wrapper.style.opacity = '1';
+       wrapper.style.transform = 'translateY(0)';
+       wrapper.style.animation = 'none';
+     }
+  });
+
+  try {
+    await new Promise(resolve => setTimeout(resolve, 80));
+    const sections = Array.from(pages);
+    const TARGET_WIDTH = 1920;
+    const BG_COLOR = '#F9F8F6';
+    const captured = [];
+    let totalHeight = 0;
+
+    for (let i = 0; i < sections.length; i++) {
+      const section = sections[i];
+      const sectionStyle = section.style.cssText;
+      section.style.width = (TARGET_WIDTH / 2) + 'px';
+      section.style.minHeight = 'auto';
+      section.style.height = 'auto';
+      section.style.paddingTop = '60px';
+      section.style.paddingBottom = '60px';
+      section.style.boxSizing = 'border-box';
+
+      const wrapper = section.querySelector('.content-wrapper');
+      const wrapperOriginal = wrapper ? wrapper.style.cssText : '';
+      if (wrapper) {
+        wrapper.style.opacity = '1';
+        wrapper.style.transform = 'translateY(0)';
+        wrapper.style.animation = 'none';
+        wrapper.style.maxWidth = '100%';
+      }
+
+      await new Promise(resolve => setTimeout(resolve, 60));
+
+      const contentCanvas = await html2canvas(section, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: BG_COLOR,
+        allowTaint: true,
+        logging: false,
+        width: TARGET_WIDTH / 2,
+      });
+
+      const scale = TARGET_WIDTH / contentCanvas.width;
+      const drawHeight = Math.ceil(contentCanvas.height * scale);
+      captured.push({ canvas: contentCanvas, drawHeight });
+      totalHeight += drawHeight;
+
+      section.style.cssText = sectionStyle;
+      if (wrapper) wrapper.style.cssText = wrapperOriginal;
+    }
+
+    const finalCanvas = document.createElement('canvas');
+    finalCanvas.width = TARGET_WIDTH;
+    finalCanvas.height = totalHeight;
+    const ctx = finalCanvas.getContext('2d');
+    ctx.fillStyle = BG_COLOR;
+    ctx.fillRect(0, 0, TARGET_WIDTH, totalHeight);
+
+    let offsetY = 0;
+    for (let i = 0; i < captured.length; i++) {
+      const item = captured[i];
+      ctx.drawImage(item.canvas, 0, offsetY, TARGET_WIDTH, item.drawHeight);
+      offsetY += item.drawHeight;
+    }
+
+    const imgData = finalCanvas.toDataURL('image/png');
+
+    if (!isMobile) {
+      if (dirInfo.dirHandle) {
+        await saveDataUrlToDirectory(dirInfo.dirHandle, fileName, imgData);
+        alert('双人报告已保存到所选目录！');
+      } else {
+        const link = document.createElement('a');
+        link.download = fileName;
+        link.href = imgData;
+        link.click();
+        alert('双人报告已生成并下载！');
+      }
+    } else {
+      alert('请在桌面浏览器中生成长图，以便保存到目录');
+    }
+  } catch (err) {
+    console.error(err);
+    alert('生成失败：' + err.message);
+  } finally {
+    cleanup();
+  }
+
+  function cleanup() {
+    restoreCaptureButtons(hiddenButtons);
+    target.style.cssText = originalStyle;
+    pages.forEach(p => {
+       if (p.dataset.originalStyle !== undefined) {
+         p.style.cssText = p.dataset.originalStyle;
+         delete p.dataset.originalStyle;
+       } else {
+         p.style.minHeight = '100vh';
+         p.style.height = '';
+         p.style.paddingBottom = '';
+       }
+       if (p.dataset.wasVisible === '1') {
+         p.classList.add('visible');
+       } else {
+         p.classList.remove('visible');
+       }
+       delete p.dataset.wasVisible;
+       const wrapper = p.querySelector('.content-wrapper');
+       if (wrapper && wrapper.dataset.originalStyle !== undefined) {
+         wrapper.style.cssText = wrapper.dataset.originalStyle;
+         delete wrapper.dataset.originalStyle;
+       }
+    });
+  }
+}
+
+function showModuleSelector() {
+  const sections = document.querySelectorAll('section.page');
+  const sectionIds = Array.from(sections).map(s => s.id);
+
+  const modal = document.createElement('div');
+  modal.className = 'module-selector-modal';
+  modal.innerHTML = \`
+    <div class="module-selector-content">
+      <h3>选择要导出的模块</h3>
+      <div class="module-selector-actions" style="margin-bottom: 16px;">
+        <button type="button" onclick="toggleAllModules(true)" class="select-action-btn">全选</button>
+        <button type="button" onclick="toggleAllModules(false)" class="select-action-btn">全不选</button>
+      </div>
+      <div class="module-list">
+        \${sectionIds.map((id, index) => \`
+          <label class="module-item">
+            <input type="checkbox" value="\${id}" checked>
+            <span>\${(index + 1).toString().padStart(2, '0')}. \${moduleNames[id] || id}</span>
+          </label>
+        \`).join('')}
+      </div>
+      <div class="module-selector-buttons">
+        <button type="button" onclick="closeModuleSelector()" class="cancel-btn">取消</button>
+        <button type="button" onclick="startModuleExport()" class="confirm-btn">开始导出</button>
+      </div>
+    </div>
+  \`;
+  document.body.appendChild(modal);
+
+  window.toggleAllModules = (checked) => {
+    modal.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = checked);
+  };
+
+  window.closeModuleSelector = () => {
+    modal.remove();
+    delete window.toggleAllModules;
+    delete window.closeModuleSelector;
+    delete window.startModuleExport;
+  };
+
+  window.startModuleExport = async () => {
+    const selectedIds = Array.from(modal.querySelectorAll('input[type="checkbox"]:checked')).map(cb => cb.value);
+    modal.remove();
+    delete window.toggleAllModules;
+    delete window.closeModuleSelector;
+    delete window.startModuleExport;
+
+    if (selectedIds.length === 0) {
+      alert('请至少选择一个模块');
+      return;
+    }
+
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    let dirInfo = { dirHandle: null, canceled: false };
+    if (!isMobile) {
+      const rawFriend = $friendJson || 'dual';
+      const prefix = sanitizeName('dual_report_' + rawFriend + '_modules');
+      dirInfo = await pickExportDirectory(prefix);
+      if (dirInfo.canceled) {
+        return;
+      }
+    }
+
+    await exportSelectedModules(selectedIds, dirInfo, isMobile);
+  };
+}
+
+async function takeModuleScreenshots() {
+  showModuleSelector();
+}
+
+async function exportSelectedModules(selectedIds, dirInfo, isMobile) {
+  const allSections = document.querySelectorAll('section.page');
+  const sections = Array.from(allSections).filter(s => selectedIds.includes(s.id));
+  const allBtns = document.querySelectorAll('.capture-btn');
+  allBtns.forEach(btn => btn.disabled = true);
+
+  const progressDiv = document.createElement('div');
+  progressDiv.className = 'module-progress';
+  progressDiv.innerHTML = '<h3>正在生成模块图片</h3><div class="progress-bar"><div class="progress-fill" style="width: 0%"></div></div><div class="progress-text">准备中...</div>';
+  document.body.appendChild(progressDiv);
+
+  const progressFill = progressDiv.querySelector('.progress-fill');
+  const progressText = progressDiv.querySelector('.progress-text');
+
+  const images = [];
+  const total = sections.length;
+  const TARGET_WIDTH = 1920;
+  const TARGET_HEIGHT = 1080;
+  const BG_COLOR = '#F9F8F6';
+
+  try {
+    for (let i = 0; i < total; i++) {
+      const section = sections[i];
+      const sectionId = section.id;
+      const wasVisible = section.classList.contains('visible');
+      section.dataset.wasVisible = wasVisible ? '1' : '0';
+      section.classList.add('visible');
+      const moduleIndex = selectedIds.indexOf(sectionId) + 1;
+      const moduleName = moduleIndex.toString().padStart(2, '0') + '_' + (moduleNames[sectionId] || sectionId);
+
+      progressText.textContent = '正在处理: ' + (moduleNames[sectionId] || sectionId) + ' (' + (i + 1) + '/' + total + ')';
+      progressFill.style.width = ((i / total) * 100) + '%';
+
+      const originalStyle = section.style.cssText;
+      section.style.width = (TARGET_WIDTH / 2) + 'px';
+      section.style.minHeight = 'auto';
+      section.style.height = 'auto';
+      section.style.paddingTop = '60px';
+      section.style.paddingBottom = '60px';
+      section.style.boxSizing = 'border-box';
+
+      const wrapper = section.querySelector('.content-wrapper');
+      const wrapperOriginalStyle = wrapper ? wrapper.style.cssText : '';
+      if(wrapper) {
+        wrapper.style.opacity = '1';
+        wrapper.style.transform = 'translateY(0)';
+        wrapper.style.animation = 'none';
+        wrapper.style.maxWidth = '100%';
+      }
+
+      const buttons = section.querySelectorAll('.capture-btn');
+      buttons.forEach(btn => btn.style.display = 'none');
+
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      const contentCanvas = await html2canvas(section, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: BG_COLOR,
+        allowTaint: true,
+        logging: false,
+        width: TARGET_WIDTH / 2,
+      });
+
+      const finalCanvas = document.createElement('canvas');
+      finalCanvas.width = TARGET_WIDTH;
+      finalCanvas.height = TARGET_HEIGHT;
+      const ctx = finalCanvas.getContext('2d');
+
+      ctx.fillStyle = BG_COLOR;
+      ctx.fillRect(0, 0, TARGET_WIDTH, TARGET_HEIGHT);
+
+      const contentHeight = contentCanvas.height;
+      const contentWidth = contentCanvas.width;
+      let drawWidth = contentWidth;
+      let drawHeight = contentHeight;
+      let scale = 1;
+      const scaleX = TARGET_WIDTH / contentWidth;
+      const scaleY = TARGET_HEIGHT / contentHeight;
+      scale = Math.min(scaleX, scaleY, 1);
+      if (scale < 1) {
+        drawWidth = contentWidth * scale;
+        drawHeight = contentHeight * scale;
+      }
+      const x = (TARGET_WIDTH - drawWidth) / 2;
+      const y = (TARGET_HEIGHT - drawHeight) / 2;
+      ctx.drawImage(contentCanvas, x, y, drawWidth, drawHeight);
+
+      section.style.cssText = originalStyle;
+      if(wrapper) wrapper.style.cssText = wrapperOriginalStyle;
+      buttons.forEach(btn => btn.style.display = '');
+      if (section.dataset.wasVisible === '1') {
+        section.classList.add('visible');
+      } else {
+        section.classList.remove('visible');
+      }
+      delete section.dataset.wasVisible;
+
+      images.push({
+        name: moduleName + '.png',
+        data: finalCanvas.toDataURL('image/png')
+      });
+    }
+
+    progressText.textContent = '正在打包导出...';
+    progressFill.style.width = '100%';
+
+    if (isMobile) {
+      progressDiv.remove();
+      await showMobileImages(images);
+    } else {
+      if (dirInfo.dirHandle) {
+        for (let i = 0; i < images.length; i++) {
+          const img = images[i];
+          await saveDataUrlToDirectory(dirInfo.dirHandle, img.name, img.data);
+        }
+        progressDiv.remove();
+        alert('已成功导出 ' + images.length + ' 张模块图片到所选目录！\\n\\n图片尺寸: 1920x1080');
+      } else {
+        for (let i = 0; i < images.length; i++) {
+          const img = images[i];
+          const link = document.createElement('a');
+          link.download = img.name;
+          link.href = img.data;
+          link.click();
+          await new Promise(resolve => setTimeout(resolve, 200));
+        }
+        progressDiv.remove();
+        alert('已成功导出 ' + images.length + ' 张模块图片！\\n\\n图片尺寸: 1920x1080');
+      }
+    }
+  } catch (err) {
+    console.error(err);
+    progressDiv.remove();
+    alert('生成失败：' + err.message);
+  } finally {
+    allBtns.forEach(btn => btn.disabled = false);
+  }
+}
+
+async function showMobileImages(images) {
+  let currentIndex = 0;
+
+  const modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.9);z-index:9999;display:flex;flex-direction:column;align-items:center;padding:20px;';
+
+  const updateModal = () => {
+    const img = images[currentIndex];
+    modal.innerHTML = '<div style="color:white;font-size:14px;margin-bottom:12px;">'+img.name+' ('+(currentIndex+1)+'/'+images.length+')</div><div style="flex:1;overflow:auto;width:100%;display:flex;justify-content:center;"><img src="'+img.data+'" style="max-width:100%;height:auto;border:1px solid #333;"/></div><div style="display:flex;gap:12px;margin-top:16px;"><button onclick="prevModule()" style="padding:10px 20px;border:none;border-radius:8px;background:#555;color:white;cursor:pointer;" '+(currentIndex===0?'disabled':'')+'>上一张</button><button onclick="nextModule()" style="padding:10px 20px;border:none;border-radius:8px;background:var(--primary);color:white;cursor:pointer;">'+(currentIndex===images.length-1?'完成':'下一张')+'</button></div><div style="color:#999;font-size:12px;margin-top:12px;">长按图片保存到相册</div>';
+  };
+
+  window.prevModule = () => {
+    if(currentIndex > 0) {
+      currentIndex--;
+      updateModal();
+    }
+  };
+
+  window.nextModule = () => {
+    if(currentIndex < images.length - 1) {
+      currentIndex++;
+      updateModal();
+    } else {
+      modal.remove();
+      delete window.prevModule;
+      delete window.nextModule;
+    }
+  };
+
+  updateModal();
+  document.body.appendChild(modal);
+}
 </script>
 ''';
   }

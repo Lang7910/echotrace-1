@@ -281,7 +281,9 @@ class _DualReportPageState extends State<DualReportPage>
         'DualReportPage',
         'cache check: friend=$friendUsername hit=${cachedData != null}',
       );
-      if (cachedData != null) {
+      final cachedVersion = cachedData?['reportVersion'] as int?;
+      if (cachedData != null &&
+          cachedVersion == DualReportCacheService.reportVersion) {
         await logger.info('DualReportPage', 'cache hit: use cached report');
         await _updateProgress('检查缓存', '已完成', 100);
         // 使用缓存数据
@@ -293,6 +295,12 @@ class _DualReportPageState extends State<DualReportPage>
           ),
         );
         return;
+      }
+      if (cachedData != null) {
+        await logger.info(
+          'DualReportPage',
+          'cache version mismatch, regenerate: cached=$cachedVersion current=${DualReportCacheService.reportVersion}',
+        );
       }
 
       await _updateProgress('检查缓存', '已完成', 12);

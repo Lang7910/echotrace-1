@@ -54,7 +54,9 @@ class _DualReportBrowserPageState extends State<DualReportBrowserPage> {
     try {
       // 首先检查缓存
       final cachedData = await DualReportCacheService.loadReport(widget.friendUsername, widget.year);
-      if (cachedData != null) {
+      final cachedVersion = cachedData?['reportVersion'] as int?;
+      if (cachedData != null &&
+          cachedVersion == DualReportCacheService.reportVersion) {
         // 使用缓存数据生成HTML
         final html = await DualReportHtmlRenderer.build(
           reportData: cachedData,
@@ -71,6 +73,9 @@ class _DualReportBrowserPageState extends State<DualReportBrowserPage> {
         if (!mounted) return;
         await _startReportServer();
         return;
+      }
+      if (cachedData != null) {
+        // 缓存版本不匹配，忽略旧缓存
       }
 
       // 获取当前用户wxid

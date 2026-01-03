@@ -100,13 +100,15 @@ class AnnualReportHtmlRenderer {
 
     final messageTypesJson = (reportData['messageTypes'] as List?) ?? [];
     final messageTypes = messageTypesJson
-        .map((e) => MessageTypeStats.fromJson(e))
+        .whereType<Map>()
+        .map((e) => MessageTypeStats.fromJson(e.cast<String, dynamic>()))
         .toList();
     final messageLengthJson = reportData['messageLength'];
-    final MessageLengthData? messageLength =
-        messageLengthJson is Map<String, dynamic>
-            ? MessageLengthData.fromJson(messageLengthJson)
-            : null;
+    final MessageLengthData? messageLength = messageLengthJson is Map
+        ? MessageLengthData.fromJson(
+            Map<String, dynamic>.from(messageLengthJson),
+          )
+        : null;
 
     final formerFriends = (reportData['formerFriends'] as List?) ?? [];
     final formerFriendsStats =
@@ -1279,19 +1281,77 @@ $heatmap
     sections.forEach(s => observer.observe(s));
   } catch(e) { console.error(e); }
 
-  function takeScreenshot() {
+  function sanitizeName(name) {
+    return name.replace(/[\\\\/:*?"<>|]/g, '_').replace(/\\s+/g, '_');
+  }
+
+  function buildExportFolderName(prefix) {
+    const stamp = new Date().toISOString().replace(/[-:]/g, '').replace('T', '_').slice(0, 15);
+    return sanitizeName(prefix + '_' + stamp);
+  }
+
+  async function pickExportDirectory(prefix) {
+    if (!window.showDirectoryPicker) {
+      return { dirHandle: null, canceled: false };
+    }
+    try {
+      const rootHandle = await window.showDirectoryPicker();
+      const folderName = buildExportFolderName(prefix);
+      const dirHandle = await rootHandle.getDirectoryHandle(folderName, { create: true });
+      return { dirHandle, canceled: false };
+    } catch (err) {
+      if (err && err.name === 'AbortError') {
+        return { dirHandle: null, canceled: true };
+      }
+      throw err;
+    }
+  }
+
+  async function saveDataUrlToDirectory(dirHandle, fileName, dataUrl) {
+    const response = await fetch(dataUrl);
+    const blob = await response.blob();
+    const fileHandle = await dirHandle.getFileHandle(fileName, { create: true });
+    const writable = await fileHandle.createWritable();
+    await writable.write(blob);
+    await writable.close();
+  }
+
+  function hideCaptureButtons() {
+    const buttons = Array.from(document.querySelectorAll('.capture-btn'));
+    return buttons.map(btn => {
+      const prev = btn.style.display;
+      btn.style.display = 'none';
+      return { btn, prev };
+    });
+  }
+
+  function restoreCaptureButtons(state) {
+    state.forEach(item => {
+      item.btn.style.display = item.prev;
+    });
+  }
+
+  async function takeScreenshot() {
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    let dirInfo = { dirHandle: null, canceled: false };
+    if (!isMobile) {
+      dirInfo = await pickExportDirectory('annual_report');
+      if (dirInfo.canceled) {
+        return;
+      }
+    }
+
     const target = document.getElementById('capture');
-    const btn = document.querySelector('.capture-btn');
     const loading = document.getElementById('loading');
-    
+    const hiddenButtons = hideCaptureButtons();
+
     loading.style.display = 'flex';
-    if(btn) btn.style.display = 'none';
 
     const originalStyle = target.style.cssText;
     target.style.height = 'auto';
     target.style.overflow = 'visible';
     target.style.scrollSnapType = 'none';
-    
+
     const pages = document.querySelectorAll('section.page');
     pages.forEach(p => {
        p.dataset.wasVisible = p.classList.contains('visible') ? '1' : '0';
@@ -1309,36 +1369,41 @@ $heatmap
        }
     });
 
-    html2canvas(target, {
-      scale: 2, 
-      useCORS: true,
-      backgroundColor: '#F9F8F6',
-      allowTaint: true, 
-      logging: false
-    }).then(canvas => {
+    try {
+      await new Promise(resolve => setTimeout(resolve, 100));
+      const canvas = await html2canvas(target, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#F9F8F6',
+        allowTaint: true,
+        logging: false
+      });
       const imgData = canvas.toDataURL('image/png');
-      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-      
       if (!isMobile) {
-        const link = document.createElement('a');
-        link.download = '$reportFileName';
-        link.href = imgData;
-        link.click();
-        alert('年度报告已生成并下载！');
+        if (dirInfo.dirHandle) {
+          await saveDataUrlToDirectory(dirInfo.dirHandle, '$reportFileName', imgData);
+          alert('年度报告已保存到所选目录！');
+        } else {
+          const link = document.createElement('a');
+          link.download = '$reportFileName';
+          link.href = imgData;
+          link.click();
+          alert('年度报告已生成并下载！');
+        }
       } else {
         document.getElementById('result-img').src = imgData;
         document.getElementById('modal').style.display = 'flex';
       }
-      cleanup();
-    }).catch(err => {
+    } catch (err) {
       console.error(err);
       alert('生成失败：' + err.message);
+    } finally {
       cleanup();
-    });
+    }
 
     function cleanup() {
       loading.style.display = 'none';
-      if(btn) btn.style.display = 'inline-block';
+      restoreCaptureButtons(hiddenButtons);
       target.style.cssText = originalStyle;
       pages.forEach(p => {
          if (p.dataset.originalStyle !== undefined) {
@@ -1416,8 +1481,17 @@ $heatmap
         alert('请至少选择一个模块');
         return;
       }
-      
-      await exportSelectedModules(selectedIds);
+
+      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      let dirInfo = { dirHandle: null, canceled: false };
+      if (!isMobile) {
+        dirInfo = await pickExportDirectory('annual_modules');
+        if (dirInfo.canceled) {
+          return;
+        }
+      }
+
+      await exportSelectedModules(selectedIds, dirInfo, isMobile);
     };
   }
 
@@ -1425,7 +1499,7 @@ $heatmap
     showModuleSelector();
   }
   
-  async function exportSelectedModules(selectedIds) {
+  async function exportSelectedModules(selectedIds, dirInfo, isMobile) {
     const allSections = document.querySelectorAll('section.page');
     const sections = Array.from(allSections).filter(s => selectedIds.includes(s.id));
     const allBtns = document.querySelectorAll('.capture-btn');
@@ -1559,24 +1633,29 @@ $heatmap
       progressText.textContent = '正在打包下载...';
       progressFill.style.width = '100%';
       
-      // 检测是否为移动端
-      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-      
       if (isMobile) {
         progressDiv.remove();
         await showMobileImages(images);
       } else {
-        for (let i = 0; i < images.length; i++) {
-          const img = images[i];
-          const link = document.createElement('a');
-          link.download = img.name;
-          link.href = img.data;
-          link.click();
-          await new Promise(resolve => setTimeout(resolve, 200));
+        if (dirInfo.dirHandle) {
+          for (let i = 0; i < images.length; i++) {
+            const img = images[i];
+            await saveDataUrlToDirectory(dirInfo.dirHandle, img.name, img.data);
+          }
+          progressDiv.remove();
+          alert('已成功导出 ' + images.length + ' 张模块图片到所选目录！\\n\\n图片尺寸: 1920x1080');
+        } else {
+          for (let i = 0; i < images.length; i++) {
+            const img = images[i];
+            const link = document.createElement('a');
+            link.download = img.name;
+            link.href = img.data;
+            link.click();
+            await new Promise(resolve => setTimeout(resolve, 200));
+          }
+          progressDiv.remove();
+          alert('已成功导出 ' + images.length + ' 张模块图片！\\n\\n图片尺寸: 1920x1080');
         }
-        
-        progressDiv.remove();
-        alert('已成功导出 ' + images.length + ' 张模块图片！\\n\\n图片尺寸: 1920x1080');
       }
       
     } catch (err) {
